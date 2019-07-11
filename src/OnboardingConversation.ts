@@ -5,31 +5,32 @@ export default class OnboardingConversation implements Conversation {
   onMessageReceived: ((message: BotMessage) => void) | undefined
 
   private username: string | undefined
-  // private gender: Gender | undefined
+  private gender: string | undefined
 
   private allMessages: BotMessage[] = [
     // Basic message
     { id: '1', author: "bot", body: "Hi, ik ben Oki!", next: '2' },
 
     // Message with a text response
-    { id: '2', author: "bot", body: "Wat is jouw naam?", responseType: "text", handler: (res) => this.username = res, next: '3' },
+    { id: '2', author: "bot", body: "Wat is jouw naam?", responseType: "text", handler: (res) => { this.username = res; return }, next: '3' },
 
     { id: '3', author: "bot", body: () => `Hi ${this.username}, leuk dat je mee doet.`, next: '4' },
 
-    { id: '4', author: "bot", body: "End", next: '-1' },
-
     // Message with a buttons response
-    // { id: '3', body: "Wat is je geslacht?", responseType: "prefab", handler: (res: Gender) => this.gender = res }, prefabAnswers: [
-    //   { body: "Man", value: "MALE" },
-    //   { body: "Vrouw", value: "FEMALE" }
-    // ]},
-    //
-    // // Message with a slider response and custom branching logic
-    // { id: '4', body: "Hoe oud ben je?", responseType: "slider", handler: (res) => return (res < 18) ? '5' : '6' }
-    //
-    // { id: '5', body: "Helaas, le bent te jong om alcohol te kopen." }
-    // { id: '6', body: "Hoera, je mag lekker zuipen!" }
-    //
+    { id: '4', author: "bot", body: "Wat is je geslacht?", responseType: "prefab", handler: (res) => { this.gender = res; return }, prefabAnswers: [
+      { body: "Man", value: "MALE" },
+      { body: "Vrouw", value: "FEMALE" }
+    ], next: "5" },
+
+    { id: '5', author: "bot", body: () => `Ok, je bent een ${this.gender}`, next: '6' },
+
+
+    // Message with a slider response and custom branching logic
+    { id: '6', author: "bot", body: "Hoe oud ben je?", responseType: "slider", next: 'foo', handler: (res) => parseInt(res, 10) < 18 ? '7' : '8' },
+
+    { id: '7', author: "bot", body: "Helaas, le bent te jong om alcohol te kopen.", next: "999" },
+    { id: '8', author: "bot", body: "Hoera, je mag lekker zuipen!", next: "999" },
+
     // // Message with a buttons response that branches out
     // { id: '7', body: "Ben je klaar om te beginnen?", responseType: "prefab", prefabAnswers: [
     //   { body: "Nee", value: "N", next: '8' }
@@ -41,10 +42,12 @@ export default class OnboardingConversation implements Conversation {
     // ]},
     //
     // { id: '9', body: "Mooi, laten we beginnen!" },
+
+    { id: '999', author: "bot", body: "Dit was het, chiao!", next: '-1' }
   ]
 
   private get lastBotMessage(): BotMessage {
-    let botMessages = this.messageLog.filter(isBotMessage)
+    const botMessages = this.messageLog.filter(isBotMessage)
     return botMessages[botMessages.length - 1]
   }
 
@@ -53,36 +56,37 @@ export default class OnboardingConversation implements Conversation {
   }
 
   private goToMessageWithID(id: string): any {
-    let message = this.allMessages.find(e => e.id === id)
+    const message = this.allMessages.find(e => e.id === id)
 
     if(message === undefined) {
       throw "Message not found"
     }
 
-    this.onMessageReceived && this.onMessageReceived(message);
+    this.onMessageReceived && this.onMessageReceived(flattenMessageBody(message, this));
 
     // Add the message to the log
     this.messageLog.push(message)
 
     // If no response is needed, advance to the next message automatically
     if(this.lastBotMessage.responseType === undefined) {
-      setTimeout(this.goToNextMessage, 500)
+      setTimeout(() => this.goToNextMessage(), 800)
     }
   }
 
-  private goToNextMessage(response: string | undefined): any {
-    let lastBotMessage = this.lastBotMessage
-    var nextMessageID = lastBotMessage.next
+  private goToNextMessage(response?: string): any {
+    const lastBotMessage = this.lastBotMessage
+    let nextMessageID = lastBotMessage.next
 
     if(response && lastBotMessage.handler !== undefined) {
       nextMessageID = lastBotMessage.handler(response) || this.lastBotMessage.next
+      // lastBotMessage.handler(response)
     }
 
     this.goToMessageWithID(nextMessageID)
   }
 
   start() {
-    this.allMessages = []
+    this.messageLog = []
     this.goToMessageWithID(this.allMessages[0].id)
   }
 
@@ -94,5 +98,13 @@ export default class OnboardingConversation implements Conversation {
 
   rewindToMessage(id: string): any {
     // TODO: Find the message to jump to, clear the message log back to that question
+  }
+}
+
+function flattenMessageBody(message: BotMessage, thisObject: any): BotMessage {
+  if(typeof message.body === "function") {
+    return {...message, body: message.body.apply(thisObject) }
+  } else {
+    return message
   }
 }

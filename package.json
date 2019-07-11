@@ -1,6 +1,9 @@
 {
   "dependencies": {
-    "enquirer": "^2.3.0",
+    "enquirer": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^12.6.2",
     "typescript": "^3.5.3"
   }
 }

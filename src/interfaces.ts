@@ -14,7 +14,7 @@ export interface BotMessage {
   prefabAnswers?: { body: string, value?: string}[]
 
   // Optional responde handler.
-  handler?: (response: string) => string | undefined
+  handler?: (response: string) => string | void
 
   // Optional id of the next message. Can be overridden by explitly returning an id in the `handler`.
   next: string
