@@ -1,8 +1,8 @@
 import { prompt } from 'enquirer';
-import OnboardingConversation from "./OnboardingConversation";
+import DeclarativeConversation from "./DeclarativeConversation";
 import { BotMessage } from './interfaces';
 
-let conversation = new OnboardingConversation()
+let conversation = new DeclarativeConversation()
 
 async function onMessageReceived(message: BotMessage) {
   if (message.responseType === undefined) {
