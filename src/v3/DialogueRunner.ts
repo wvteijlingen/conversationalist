@@ -48,15 +48,19 @@ export default class DialogueRunner<State>{
   // }
 
   private async runStep(step: StepFunction<State>, response: any | undefined, state: State) {
-    const stepResult = await step(response, state)
+    const stepResult: StepResult<State> = await step.call(this.dialogue, response, state)
 
     if(stepResult.nextStep) {
       this.nextStep = stepResult.nextStep
     } else {
-      console.log("The dialogue is finished.")
+      this.nextStep = undefined
     }
 
-    this.onStep && this.onStep(stepResult, this.nextStep !== undefined)
+    this.onStep && this.onStep(stepResult, this.nextStep === undefined)
+
+    if(this.nextStep && !stepResult.prompt) {
+      this.runStep(this.nextStep, undefined, this.state)
+    }
   }
 
   public get snapshot(): DialogueRunnerSnapshot<State> {

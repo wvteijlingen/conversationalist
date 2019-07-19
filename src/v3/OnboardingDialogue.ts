@@ -7,7 +7,7 @@ interface DialogueState {
 const OnboardingDialogue: Dialogue<DialogueState> = {
   start(response, state) {
     return {
-      body: "I’m Oki and I am here to help you get treated better and faster. Are you signing up or have you been here before?",
+      body: ["I’m Oki and I am here to help you get treated better and faster.", "Are you signing up or have you been here before?"],
       prompt: { type: "prefab", choices: [
         { body: "👋 I'm new here", value: "NEW" },
         { body: "Been here before", value: "EXISTING" }
@@ -21,7 +21,7 @@ const OnboardingDialogue: Dialogue<DialogueState> = {
       return {
         body: ["Welcome! Let’s get you set up!", "What’s your name?"],
         prompt: { type: "text" },
-        nextStep: this.greeting
+        nextStep: this.handleUsername
       }
     } else {
       throw "This branch is not implemented yet"
@@ -87,10 +87,14 @@ const OnboardingDialogue: Dialogue<DialogueState> = {
 
   promptAddress(response, state) {
     // Fetch possible addresses
+    const choices = [
+      { body: "First address", value: "First address" },
+      { body: "Second address", value: "Second address" }
+    ]
 
     return {
       body: "Please select your address.",
-      prompt: { type: "picker", options: [] },
+      prompt: { type: "picker", choices },
       nextStep: this.handleAddress
     }
   },

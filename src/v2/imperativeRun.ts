@@ -37,6 +37,6 @@ async function onBotMessageAdded(message: BotMessage) {
   }
 }
 
-conversation.onBotMessageAdded = onBotMessageAdded;
+conversation.on('messageAdded', onBotMessageAdded);
 
 conversation.start()

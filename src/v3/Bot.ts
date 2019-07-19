@@ -22,7 +22,7 @@ export class Bot extends EventEmitter {
 
   constructor(rootDialogueRunner: DialogueRunner<any>) {
     super()
-    this.dialogueRunners = [rootDialogueRunner]
+    this.pushDialogueRunner(rootDialogueRunner, false)
   }
 
   static fromSnapshot(snapshot: BotSnapshot) {
@@ -43,7 +43,7 @@ export class Bot extends EventEmitter {
       body: response
     } as Message)
 
-    for(let i = this.dialogueRunners.length; i >= 0; i--) {
+    for(let i = this.dialogueRunners.length - 1; i >= 0; i--) {
       const runner = this.dialogueRunners[i]
       if(runner.onReceiveResponse(response)) {
         break
@@ -51,7 +51,7 @@ export class Bot extends EventEmitter {
     }
   }
 
-  pushDialogueRunner(runner: DialogueRunner<any>) {
+  pushDialogueRunner(runner: DialogueRunner<any>, start: boolean = true) {
     this.dialogueRunners.push(runner)
     runner.onStep = (result, isFinished) => {
       this.emit("step", {
@@ -64,7 +64,10 @@ export class Bot extends EventEmitter {
         this.removeDialogueRunner(runner)
       }
     }
-    runner.start()
+
+    if(start) {
+      runner.start()
+    }
   }
 
   // private popDialogueRunner() {

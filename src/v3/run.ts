@@ -7,14 +7,19 @@ let dialogueRunner = new DialogueRunner(OnboardingDialogue)
 let bot = new Bot(dialogueRunner)
 
 async function onStep(message: Message) {
+  if(message.author === "user") {
+    console.log(`< ${message.body}`)
+    return
+  }
+
   if (message.prompt === undefined) {
-    console.log(message.body)
+    console.log(`> ${message.body}`)
 
   } else if(message.prompt.type === "text") {
     const response = await prompt({
       type: 'input',
       name: 'input',
-      message: message.body
+      message: `> ${message.body}`
     });
 
     bot.onReceiveResponse((<{input: string}>response).input)
@@ -23,8 +28,8 @@ async function onStep(message: Message) {
     const response = await prompt({
       type: 'select',
       name: 'input',
-      message: message.body,
-      choices: message.prompt.choices.map(e => e.body)
+      message: `> ${message.body}`,
+      choices: message.prompt.choices.map(e => e.value)
     });
 
     bot.onReceiveResponse((<{input: string}>response).input)
@@ -33,7 +38,7 @@ async function onStep(message: Message) {
     const response = await prompt({
       type: 'numeral',
       name: 'input',
-      message: message.body
+      message: `> ${message.body}`
     });
 
     bot.onReceiveResponse((<{input: string}>response).input)
