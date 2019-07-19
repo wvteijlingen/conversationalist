@@ -1,0 +1,93 @@
+type StepFunction<State> = (response: any | undefined, data: State, actions: Actions<State>) => Promise<any | undefined>
+
+interface Actions<State> {
+  say(message: string | string[]): Promise<void>
+  promptText(question: string): Promise<string>
+  next(fn: StepFunction<State>): void
+}
+
+interface Conversation<State>  {
+  [key: string]: StepFunction<State>
+}
+
+interface TestConversationState {
+  username?: string
+  age?: number
+}
+
+const TestConversation: Conversation<TestConversationState> = {
+  welcomeStep(response, state, actions) {
+    actions.next(this.usernameStep)
+    return actions.say([
+      "Hi, I am your cool bot buddy.",
+      "Let's get started!"
+    ])
+  },
+
+  promptUsernameStep(response, state, actions) {
+    actions.next(this.greetingStep)
+    return actions.promptText("What is your name?")
+  },
+
+  greetingStep(response, state, actions) {
+    state.username = response
+    actions.next(this.promptAgeStep)
+    return actions.say(`Nice to meet you ${state.username}.`)
+  },
+
+  promptAgeStep(response, state, actions) {
+    actions.next(this.handleAgeResponseStep)
+    return actions.promptText("What is your age?")
+  },
+
+  handleAgeResponseStep(response, state, actions) {
+    const age = parseInt(response, 10)
+    if(isNaN(age)) {
+      actions.next(this.handleAgeResponseStep)
+      return actions.promptText(`Hm, I don't understand that. Please enter your age as a number.`)
+    } else {
+      state.age = age
+      return actions.say(`Well, it seems your name is ${state.username}, and your age is ${state.age}`)
+    }
+  }
+}
+
+asyn function runStep<State>(step: StepFunction<State>, response: any | undefined, state: State): Promise<(res?: any) => void> {
+  let nextStep: StepFunction<State> | undefined
+
+  let resolver = (response: any | undefined) => {
+    if(nextStep) {
+      runStep(nextStep, response, state)
+    } else {
+      console.log("The conversation is finished.")
+    }
+  }
+
+  const actions: Actions<State> = {
+    say(message: string | string[]) {
+      console.log("M >", message)
+      return Promise.resolve()
+    },
+    promptText(question: string) {
+      console.log("Q >", question)
+      return new Promise((resolve, _reject) => {
+        resolver = resolve
+      })
+    },
+    next(fn: StepFunction<State>) {
+      nextStep = fn
+    }
+  }
+
+  const result = await step(response, state, actions)
+  return resolver
+}
+
+function runConversationStep<State>(conversation: Conversation<State>, stepName: string, response: any | undefined, state: State) {
+  const stepFunction = conversation[stepName]
+  runStep(stepFunction, response, state)
+}
+
+function saveConversation<State>(converation: Conversation<State>, stepName: string) {
+  // TODO
+}

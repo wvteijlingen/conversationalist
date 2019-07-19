@@ -1,7 +1,14 @@
+import { EventEmitter } from "events";
+
+interface Attachment {
+  body: string,
+  value?: any
+}
+
 export interface BotMessage {
   author: "bot"
   body: string
-  data?: any
+  attachments?: Attachment[]
 
   // Responses
   responseType?: "text" | "prefab" | "slider"
@@ -10,30 +17,37 @@ export interface BotMessage {
 
 export interface UserMessage {
   author: "user"
-  value: any
+  body?: string
+  value?: any
+  attachments?: Attachment[]
 }
 
 export type Message = BotMessage | UserMessage
 
-function isBotMessage(message: Message): message is BotMessage {
-  return message.author === "bot"
-}
+// function isBotMessage(message: Message): message is BotMessage {
+//   return message.author === "bot"
+// }
+//
+// function isUserMessage(message: Message): message is UserMessage {
+//   return message.author === "user"
+// }
 
-function isUserMessage(message: Message): message is UserMessage {
-  return message.author === "user"
-}
-
-abstract class ImperativeConversation {
+abstract class ImperativeConversation extends EventEmitter {
   protected DEFAULT_TYPING_DURATION = 500
 
-  isTyping: boolean = false
+  // Whether the bot is currently typing.
+  isTyping = false
+
+  // A log of all messages sent and received in the oconversation.
   messageLog: Message[] = []
-  onIsTypingChanged: ((isTyping: boolean) => void) | undefined
-  onMessageLogChanged: (() => void) | undefined
-  onBotMessageAdded: ((message: BotMessage) => void) | undefined
+  // onIsTypingChanged: ((isTyping: boolean) => void) | undefined
+  // onMessageLogChanged: (() => void) | undefined
+  // onBotMessageAdded: ((message: BotMessage) => void) | undefine
+
+  // Whether this conversation can still go forward.
   isFinished = false
 
-  private activeResolver: ((value: any) => void) | undefined
+  private activeResolver: ((message: UserMessage) => void) | undefined
   private sendQueue: Array<{ message: Message, resolver?: (value: any) => void, typingDuration?: number }> = []
   private sendTimeout: NodeJS.Timeout | undefined
 
@@ -46,26 +60,29 @@ abstract class ImperativeConversation {
 
     if(pendingItem) {
       this.messageLog.push(pendingItem.message)
-      this.onMessageLogChanged && this.onMessageLogChanged()
+      this.emit('messageAdded', pendingItem.message)
+      // this.onMessageLogChanged && this.onMessageLogChanged()
       this.activeResolver = pendingItem.resolver
-      if(isBotMessage(pendingItem.message)) {
-        this.onBotMessageAdded && this.onBotMessageAdded(pendingItem.message)
-      }
+      // if(isBotMessage(pendingItem.message)) {
+      //   this.onBotMessageAdded && this.onBotMessageAdded(pendingItem.message)
+      // }
     }
 
     // Check if there are remaining messages in the queue, and schedule a check if needed
     if(this.sendQueue.length > 0 && !this.sendTimeout) {
       this.isTyping = true
-      this.onIsTypingChanged && this.onIsTypingChanged(this.isTyping)
+      this.emit('typingchanged', this.isTyping)
+      // this.onIsTypingChanged && this.onIsTypingChanged(this.isTyping)
       const typingDuration = this.sendQueue[0].typingDuration || this.DEFAULT_TYPING_DURATION
       this.sendTimeout = setTimeout(() => this.sendNextMessageFromQueue(), typingDuration)
     } else {
       this.isTyping = false
-      this.onIsTypingChanged && this.onIsTypingChanged(this.isTyping)
+      this.emit('typingchanged', this.isTyping)
+      // this.onIsTypingChanged && this.onIsTypingChanged(this.isTyping)
     }
   }
 
-  private async queueMessage(message: Message) {
+  private async enqueueBotMessage(message: Message) {
     if(this.isFinished) {
       throw "Cannot queue message when conversation is finished."
     }
@@ -74,13 +91,13 @@ abstract class ImperativeConversation {
     this.sendNextMessageFromQueue()
   }
 
-  private queueResolvableMessage<T>(message: Message): Promise<T> {
+  private queueResolvableMessage<ResponseType>(message: Message): Promise<ResponseType> {
     if(this.isFinished) {
       throw "Cannot queue question when conversation is finished."
     }
 
     let resolver;
-    let promise = new Promise<T>((resolve, _reject) => {
+    let promise = new Promise<ResponseType>((resolve, _reject) => {
       resolver = resolve
     });
 
@@ -88,10 +105,12 @@ abstract class ImperativeConversation {
     return promise
   }
 
+  // Send a message.
   protected send(message: string) {
-    this.queueMessage({ author: "bot", body: message })
+    this.enqueueBotMessage({ author: "bot", body: message })
   }
 
+  // Send a question without prefab answers.
   protected async askOpenQuestion(question: string): Promise<string> {
     const botMessage: BotMessage = {
       author: "bot",
@@ -102,6 +121,7 @@ abstract class ImperativeConversation {
     return this.queueResolvableMessage<string>(botMessage)
   }
 
+  // Send a question that has prefab answers.
   protected async askClosedQuestion<T>(question: string, answers?: { body: string, value?: T }[]): Promise<T> {
     const botMessage: BotMessage = {
       author: "bot",
@@ -113,28 +133,35 @@ abstract class ImperativeConversation {
     return this.queueResolvableMessage<T>(botMessage)
   }
 
-  protected setCheckpoint(id: string) {
-    this.reachedCheckpoint(id)
+  // Marks the given `checkpoint` as reached.
+  protected setCheckpoint(checkpoint: string) {
+    this.reachedCheckpoint(checkpoint)
   }
 
+  // Finish the conversation.
   protected finish() {
     this.isFinished = true
   }
 
-  protected async shouldResume(checkpoint: string): Promise<boolean> {
+  // Asks the user if he wants to resume the previous conversation.
+  // By default, this will ask a generic question whether the user wants to continue.
+  // You can override this method to customize the message or explicitly return a value.
+  // @return Whether the conversation should resume.
+  protected async shouldResume(_checkpoint: string): Promise<boolean> {
     this.send("It seems we were in the middle of a conversation.")
     return this.askClosedQuestion("Do you want to pick up where we left?", [
-      { body: 'Yep', value: true },
+      { body: 'Yes', value: true },
       { body: 'No thanks', value: false }
     ])
   }
 
-  // Start the conversation
+  // Start the conversation from the beginning.
   start() {
     this.messageLog = []
     this.isFinished = false
   }
 
+  // Attempt to resume the conversation from the given `checkpoint`.
   async resume(checkpoint: string) {
     if(await this.shouldResume(checkpoint)) {
       this.resume(checkpoint)
@@ -143,18 +170,34 @@ abstract class ImperativeConversation {
     }
   }
 
-  answer(value: any) {
-    this.queueMessage({ author: "user", value })
+  // Answer the last question.
+  // @param {body} A response message.
+  // @param {value} A value that can represent various things. E.g. a prefab answer id, a slider value, etc.
+  // @param {attachments} Optional attachments that are added to the message.
+  answer(body?: string, value?: any, attachments?: Attachment[]) {
+    const userMessage: UserMessage = { author: "user", body, value, attachments }
+
+    this.messageLog.push(userMessage)
+    this.emit('messageAdded', userMessage)
+
     if(this.activeResolver) {
-      this.activeResolver(value)
+      this.activeResolver(userMessage)
     } else {
-      this.handleFreeInput(value)
+      this.handleFreeInput(userMessage)
     }
   }
 
+  // Called when a message is received outside of a response to a question.
+  // You can use this methods to handle general messages such as "help", "hi", etc.
+  protected abstract handleFreeInput(message: UserMessage): any
+
+  // Called when a certain `checkpoint` is reached.
+  // You can use this method to store the checkpoint and any related date.
   protected abstract reachedCheckpoint(checkpoint: string): void
+
+  // Called when the conversation should resume from a checkpoint.
+  // You can check the passed `checkpoint` and jump to a suitable point in the conversation.
   protected abstract continueFromCheckpoint(checkpoint: string): void
-  protected abstract handleFreeInput(value: void): any
 }
 
 
@@ -168,7 +211,7 @@ export default class OnboardingConversation extends ImperativeConversation {
   private gender: Gender | undefined
 
   protected handleFreeInput(value: any): any {
-    this.send(`You just said: "${value}"`)
+    this.send(`I didn't ask you anything, but you just said: "${value}."`)
   }
 
   protected async continueFromCheckpoint(checkpoint: string) {
