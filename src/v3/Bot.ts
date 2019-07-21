@@ -1,7 +1,7 @@
 import { EventEmitter } from "events"
-import { Dialogue } from "./Dialogue"
-import DialogueRunner, { DialogueRunnerSnapshot } from "./DialogueRunner"
-import Prompt from "./Prompts";
+import { StepResult } from "./Dialogue"
+import { DialogueRunnerInterface, DialogueRunnerSnapshot } from "./DialogueRunner"
+import Prompt from "./Prompts"
 
 export interface Message {
   author: "bot" | "user"
@@ -11,26 +11,42 @@ export interface Message {
 
 interface BotSnapshot {
   messageLog: Message[]
-  dialogues: [
-    { dialogue: Dialogue<any>, snapshot: DialogueRunnerSnapshot<any> }
-  ]
+  dialogues: { identifier: string, snapshot: DialogueRunnerSnapshot<any> }[]
+}
+
+export interface Middleware {
+  run(response: any, bot: Bot): boolean
 }
 
 export class Bot extends EventEmitter {
   messageLog: Message[] = []
-  dialogueRunners: DialogueRunner<any>[] = []
+  private dialogueRunners: DialogueRunnerInterface<any>[] = []
+  private middlewares: Middleware[] = []
 
-  constructor(rootDialogueRunner: DialogueRunner<any>) {
+  constructor(dialogueRunners: DialogueRunnerInterface<any>[]) {
     super()
-    this.pushDialogueRunner(rootDialogueRunner, false)
+    if(dialogueRunners.length === 0) {
+      throw "A bot must be constructed with at least 1 dialog runner"
+    }
+    for(const runner of dialogueRunners) {
+      this.pushDialogueRunner(runner, false)
+    }
   }
 
-  static fromSnapshot(snapshot: BotSnapshot) {
-    throw "TODO: Not implemented yet"
+  static fromSnapshot(snapshot: BotSnapshot, hydrator: (identifier: string, snapshot: DialogueRunnerSnapshot<any>) => DialogueRunnerInterface<any>) {
+    const dialogueRunners = snapshot.dialogues.map(e => hydrator(e.identifier, e.snapshot))
+    const bot = new Bot(dialogueRunners)
+    bot.messageLog = snapshot.messageLog
+    return bot
   }
 
   get snapshot(): BotSnapshot {
-    throw "TODO: Not implemented yet"
+    return {
+      messageLog: this.messageLog,
+      dialogues: this.dialogueRunners.map(runner => ({
+        identifier: runner.identifier, snapshot: runner.snapshot
+      }))
+    }
   }
 
   start() {
@@ -38,10 +54,20 @@ export class Bot extends EventEmitter {
   }
 
   onReceiveResponse(response?: any) {
-    this.emit("step", {
+    for(const middleware of this.middlewares) {
+      const shouldContinue = middleware.run(response, this)
+      if(!shouldContinue) {
+        return
+      }
+    }
+
+    const message: Message = {
       author: "user",
       body: response
-    } as Message)
+    }
+
+    this.messageLog.push(message)
+    this.emit("step", message)
 
     for(let i = this.dialogueRunners.length - 1; i >= 0; i--) {
       const runner = this.dialogueRunners[i]
@@ -51,9 +77,13 @@ export class Bot extends EventEmitter {
     }
   }
 
-  pushDialogueRunner(runner: DialogueRunner<any>, start: boolean = true) {
+  pushDialogueRunner(runner: DialogueRunnerInterface<any>, start: boolean = true) {
+    // console.log("Pushing dialogue runner", runner.identifier)
+
     this.dialogueRunners.push(runner)
+
     runner.onStep = (result, isFinished) => {
+      this.addStepResultToMessageLog(result)
       this.emit("step", {
         author: "bot",
         body: result.body,
@@ -70,23 +100,34 @@ export class Bot extends EventEmitter {
     }
   }
 
-  // private popDialogueRunner() {
-  //   if(this.dialogueRunners.length <= 1) {
-  //     throw "Cannot pop root dialogue"
-  //   }
-  //
-  //   const runner = this.dialogueRunners.pop()
-  //   if(runner) {
-  //     runner.onStep = undefined
-  //   }
-  // }
+  private addStepResultToMessageLog(result: StepResult<any>) {
+    const bodies = typeof result.body === "string" ? [result.body] : result.body
+    bodies.forEach((body, index, array) => {
+      this.messageLog.push({
+        author: "bot",
+        body,
+        prompt: index === array.length - 1 ? result.prompt : undefined
+      })
+    })
+  }
 
-  private removeDialogueRunner(runner: DialogueRunner<any>) {
+  private removeDialogueRunner(runner: DialogueRunnerInterface<any>) {
+    // console.log("Removing dialogue runner", runner.identifier)
+
     if(this.dialogueRunners.length <= 1) {
       throw "Cannot remove root dialogue"
     }
 
     runner.onStep = undefined
     this.dialogueRunners = this.dialogueRunners.filter(e => e !== runner)
+
+    const currentRunner = this.dialogueRunners[this.dialogueRunners.length - 1]
+    currentRunner.onReceiveResponse(undefined)
+  }
+
+  // Middleware
+
+  use(middleware: Middleware) {
+    this.middlewares.push(middleware)
   }
 }

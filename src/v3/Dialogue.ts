@@ -1,4 +1,4 @@
-import Prompt from "./Prompts";
+import Prompt from "./Prompts"
 
 export type StepFunction<State> = (response: any | undefined, data: State) => StepResult<State>
 
@@ -8,7 +8,7 @@ export interface StepResult<State> {
   nextStep?: StepFunction<State>
 }
 
-export interface Dialogue<State>  {
+export interface DialogueScript<State> {
   start: StepFunction<State>
   [key: string]: StepFunction<State>
 }

@@ -1,4 +1,4 @@
-import { Dialogue } from "./Dialogue";
+import { Dialogue, StepFunction } from "./Dialogue"
 
 interface DialogueState {
   username?: string
@@ -105,7 +105,11 @@ const OnboardingDialogue: Dialogue<DialogueState> = {
     return {
       body: "I’m on it! The device should be with you in 24 hours. Don’t forget to check back in with me when it arrives.",
     }
-  }
+  },
+
+  // _resume(nextStep, state): StepFunction | undefined {
+  //   if(nextStep === )
+  // }
 }
 
 export default OnboardingDialogue

@@ -1,11 +1,22 @@
-import { Dialogue, StepFunction, StepResult } from "./Dialogue";
+import { Dialogue, StepFunction, StepResult } from "./Dialogue"
 
 export interface DialogueRunnerSnapshot<State> {
   nextStepName?: string,
   state: State
 }
 
-export default class DialogueRunner<State>{
+export interface DialogueRunnerInterface<State> {
+  identifier: string
+  onStep?: (result: StepResult<State>, isFinished: boolean) => void
+  snapshot: DialogueRunnerSnapshot<State>
+
+  onReceiveResponse(response?: any): boolean
+  start(): void
+  jumpToStep(stepName: string): void
+}
+
+export default class DialogueRunner<State> implements DialogueRunnerInterface<State> {
+  identifier!: string // TODO
   dialogue: Dialogue<State>
   onStep?: (result: StepResult<State>, isFinished: boolean) => void
 
@@ -34,13 +45,13 @@ export default class DialogueRunner<State>{
     }
   }
 
+  public start() {
+    this.runStep(this.dialogue.start, undefined, this.state)
+  }
+
   public jumpToStep(stepName: string) {
     this.nextStep = this.dialogue[stepName]
     // TODO: Clear the message log
-  }
-
-  public start() {
-    this.runStep(this.dialogue.start, undefined, this.state)
   }
 
   // private async runStepWithName(stepName: string, response: any | undefined, state: State) {
