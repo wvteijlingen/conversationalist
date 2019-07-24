@@ -1,21 +1,21 @@
-export interface TextPrompt {
+interface TextPrompt {
   type: "text"
 }
 
-export interface PrefabPrompt {
-  type: "prefab"
-  choices: { body: string, value: any }[]
-}
-
-export interface SliderPrompt {
+interface SliderPrompt {
   type: "slider"
 }
 
-export interface PickerPrompt {
-  type: "picker",
-  choices: { body: string, value: any }[]
+interface InlinePickerPrompt {
+  type: "inlinePicker"
+  choices: { body: string, value: unknown }[]
 }
 
-type Prompt = TextPrompt | PrefabPrompt | SliderPrompt | PickerPrompt
+interface PickerPrompt {
+  type: "picker",
+  choices: { body: string, value: unknown }[]
+}
+
+type Prompt = TextPrompt | InlinePickerPrompt | SliderPrompt | PickerPrompt
 
 export default Prompt

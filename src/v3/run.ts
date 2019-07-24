@@ -1,19 +1,18 @@
 import fs from "fs"
 import { prompt } from 'enquirer'
 import { Message, Bot, Middleware } from './Bot'
-import DialogueRunner from './DialogueRunner'
-import OnboardingDialogue from './OnboardingDialogue'
-import HelpDialogue from './HelpDialogue'
+import ScriptedDialogue from './ScriptedDialogue'
+import OnboardingDialogue from './dialogues/OnboardingDialogue'
+import HelpDialogue from './dialogues/HelpDialogue'
 
-let dialogueRunner = new DialogueRunner(OnboardingDialogue)
-dialogueRunner.identifier = "Onboarding"
-let bot = new Bot(dialogueRunner)
+const bot = new Bot(new ScriptedDialogue("onboarding", OnboardingDialogue))
 
-async function onStep(message: Message) {
+async function onMessagesAdded(messages: Message[]) {
   // Save state
   const snapshot = bot.snapshot
   fs.writeFileSync("./BotState.json", JSON.stringify(snapshot, null, 2))
 
+  const message = messages[messages.length - 1]
 
   if(message.author === "user") {
     console.log(`< ${message.body}`)
@@ -30,17 +29,19 @@ async function onStep(message: Message) {
       message: `> ${message.body}`
     })
 
-    bot.onReceiveResponse((<{input: string}>response).input)
+    bot.respond((<{input: string}>response).input)
 
-  } else if(message.prompt.type === "prefab" || message.prompt.type === "picker") {
+  } else if(message.prompt.type === "inlinePicker" || message.prompt.type === "picker") {
     const response = await prompt({
       type: 'select',
       name: 'input',
       message: `> ${message.body}`,
-      choices: message.prompt.choices.map(e => e.value)
+      choices: message.prompt.choices.map(e => e.body)
     })
 
-    bot.onReceiveResponse((<{input: string}>response).input)
+    const selectedChoice = message.prompt.choices.find(e => e.body === (<{input: string}>response).input) as {body: string, value: unknown}
+
+    bot.respond(selectedChoice.body, selectedChoice.value)
 
   } else if(message.prompt.type === "slider") {
     const response = await prompt({
@@ -49,24 +50,30 @@ async function onStep(message: Message) {
       message: `> ${message.body}`
     })
 
-    bot.onReceiveResponse((<{input: string}>response).input)
+    bot.respond((<{input: string}>response).input)
   }
 }
 
-bot.on('step', onStep)
+bot.on('messagesAdded', onMessagesAdded)
 
+const HelpMiddleware: Middleware = (body, value, bot) => {
+  if(body.toLowerCase() === "help") {
+    bot.pushDialogue(new ScriptedDialogue("help", HelpDialogue))
+    return false
+  }
+  return true
+}
 
-const HelpMiddleware: Middleware = {
-  run(response) {
-    if(response.toLowerCase() === "help") {
-      let dialogueRunner = new DialogueRunner(HelpDialogue)
-      dialogueRunner.identifier = "Help"
-      bot.pushDialogueRunner(dialogueRunner)
-      return false
-    }
+const CommandMiddleware: Middleware = (body, value, bot) => {
+  if(!body.toLowerCase().startsWith("/")) {
     return true
   }
+
+  bot.interjectMessages([`Running command: ${body}`])
+
+  return false
 }
 
-bot.middleware.push(HelpMiddleware)
+bot.use(HelpMiddleware)
+bot.use(CommandMiddleware)
 bot.start()

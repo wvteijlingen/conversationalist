@@ -1,10 +1,10 @@
-import { Dialogue } from "./Dialogue"
+import { DialogueScript } from "../ScriptedDialogue"
 
-const HelpDialogue: Dialogue<void> = {
+const HelpDialogue: DialogueScript<void> = {
   start(response, state) {
     return {
       body: ["Do you need help with something?"],
-      prompt: { type: "prefab", choices: [
+      prompt: { type: "inlinePicker", choices: [
         { body: "Yes", value: "TRUE" },
         { body: "No", value: "FALSE" }
       ]},

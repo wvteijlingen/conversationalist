@@ -1,4 +1,4 @@
-import { Dialogue } from "../Dialogue"
+import { DialogueScript } from "../ScriptedDialogue"
 
 interface Params {
   startMessage: string
@@ -8,7 +8,7 @@ interface Params {
 }
 
 export default function generateAssessmentDialogue(data: Params) {
-  let dialogue: Dialogue<{ totalPoints: number }> = {
+  let dialogue: DialogueScript<{ totalPoints: number }> = {
     start() {
       return { body: data.startMessage, nextStep: dialogue["prompt_0"] }
     },
@@ -25,7 +25,7 @@ export default function generateAssessmentDialogue(data: Params) {
       }
       return {
         body: question,
-        prompt: { type: "prefab", choices: data.answers },
+        prompt: { type: "inlinePicker", choices: data.answers },
         nextStep: index === array.length - 1 ? dialogue.endMessage : dialogue[`prompt_${index + 1}`]
       }
     }

@@ -1,14 +1,14 @@
-import { Dialogue, StepFunction } from "./Dialogue"
+import { DialogueScript } from "../ScriptedDialogue"
 
-interface DialogueState {
+interface State {
   username?: string
 }
 
-const OnboardingDialogue: Dialogue<DialogueState> = {
+const OnboardingDialogue: DialogueScript<State> = {
   start(response, state) {
     return {
       body: ["I’m Oki and I am here to help you get treated better and faster.", "Are you signing up or have you been here before?"],
-      prompt: { type: "prefab", choices: [
+      prompt: { type: "inlinePicker", choices: [
         { body: "👋 I'm new here", value: "NEW" },
         { body: "Been here before", value: "EXISTING" }
       ]},
@@ -29,7 +29,7 @@ const OnboardingDialogue: Dialogue<DialogueState> = {
   },
 
   handleUsername(response, state) {
-    if(!response) {
+    if(!response || typeof response !== "string") {
       return {
         body: "Please enter your name.",
         prompt: { type: "text" },
@@ -38,6 +38,7 @@ const OnboardingDialogue: Dialogue<DialogueState> = {
     }
 
     state.username = response
+
     return {
       body: `Hey ${state.username}.`,
       nextStep: this.promptReferralCode
@@ -80,7 +81,6 @@ const OnboardingDialogue: Dialogue<DialogueState> = {
     }
 
     return {
-      body: "TODO: Allow nil",
       nextStep: this.promptAddress
     }
   },
@@ -103,13 +103,19 @@ const OnboardingDialogue: Dialogue<DialogueState> = {
     // Save the address somewhere
 
     return {
-      body: "I’m on it! The device should be with you in 24 hours. Don’t forget to check back in with me when it arrives.",
+      body: [
+        "I’m on it! The device should be with you in 24 hours. Don’t forget to check back in with me when it arrives.",
+        "Now, let's transition to another dialogue"
+      ],
+      nextStep: this.startHelpDialogue
     }
   },
 
-  // _resume(nextStep, state): StepFunction | undefined {
-  //   if(nextStep === )
-  // }
+  startHelpDialogue(response, state) {
+    return {
+      nextDialogueIdentifier: "a"
+    }
+  }
 }
 
 export default OnboardingDialogue
