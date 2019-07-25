@@ -4,12 +4,13 @@ interface Params {
   startMessage: string
   endMessage: string
   questions: string[]
-  answers:{ value: number, body: string }[]
+  answers: Array<{ value: number, body: string }>
 }
 
 export default function generateAssessmentDialogue(data: Params) {
-  let dialogue: DialogueScript<{ totalPoints: number }> = {
+  const dialogue: DialogueScript<{ totalPoints: number }> = {
     start() {
+      // tslint:disable-next-line: no-string-literal
       return { body: data.startMessage, nextStep: dialogue["prompt_0"] }
     },
 
@@ -19,6 +20,7 @@ export default function generateAssessmentDialogue(data: Params) {
   }
 
   data.questions.forEach((question, index, array) => {
+    // tslint:disable-next-line: only-arrow-functions
     dialogue[`prompt_${index}`] = function(response, state) {
       if(typeof response === "number") {
         state.totalPoints = state.totalPoints + response
@@ -30,4 +32,6 @@ export default function generateAssessmentDialogue(data: Params) {
       }
     }
   })
+
+  return dialogue
 }

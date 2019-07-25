@@ -24,7 +24,7 @@ const OnboardingDialogue: DialogueScript<State> = {
         nextStep: this.handleUsername
       }
     } else {
-      throw "This branch is not implemented yet"
+      throw new Error("This branch is not implemented yet")
     }
   },
 

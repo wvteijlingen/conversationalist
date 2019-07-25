@@ -1,79 +1,91 @@
+import { prompt } from "enquirer"
 import fs from "fs"
-import { prompt } from 'enquirer'
-import { Message, Bot, Middleware } from './Bot'
-import ScriptedDialogue from './ScriptedDialogue'
-import OnboardingDialogue from './dialogues/OnboardingDialogue'
-import HelpDialogue from './dialogues/HelpDialogue'
+import { Bot, Message, Middleware } from "./Bot"
+import HelpDialogue from "./dialogues/HelpDialogue"
+import OnboardingDialogue from "./dialogues/OnboardingDialogue"
+import ScriptedDialogue from "./ScriptedDialogue"
 
-const bot = new Bot(new ScriptedDialogue("onboarding", OnboardingDialogue))
+const chatBot = new Bot(new ScriptedDialogue("onboarding", OnboardingDialogue))
+
+chatBot.initDialogue = identifier => {
+  switch (identifier) {
+    case "onboarding": return new ScriptedDialogue(identifier, OnboardingDialogue)
+    case "help": return new ScriptedDialogue(identifier, HelpDialogue)
+    default:
+      throw new Error("unhandled")
+  }
+}
 
 async function onMessagesAdded(messages: Message[]) {
   // Save state
-  const snapshot = bot.snapshot
+  const snapshot = chatBot.snapshot
   fs.writeFileSync("./BotState.json", JSON.stringify(snapshot, null, 2))
 
   const message = messages[messages.length - 1]
 
   if(message.author === "user") {
+    // tslint:disable-next-line: no-console
     console.log(`< ${message.body}`)
     return
   }
 
   if (message.prompt === undefined) {
+    // tslint:disable-next-line: no-console
     console.log(`> ${message.body}`)
 
   } else if(message.prompt.type === "text") {
     const response = await prompt({
-      type: 'input',
-      name: 'input',
+      type: "input",
+      name: "input",
       message: `> ${message.body}`
     })
 
-    bot.respond((<{input: string}>response).input)
+    chatBot.respond((response as { input: string }).input)
 
   } else if(message.prompt.type === "inlinePicker" || message.prompt.type === "picker") {
     const response = await prompt({
-      type: 'select',
-      name: 'input',
+      type: "select",
+      name: "input",
       message: `> ${message.body}`,
       choices: message.prompt.choices.map(e => e.body)
     })
 
-    const selectedChoice = message.prompt.choices.find(e => e.body === (<{input: string}>response).input) as {body: string, value: unknown}
+    const selectedChoice = message.prompt.choices.find(e => e.body === (response as { input: string }).input) as { body: string, value: unknown }
 
-    bot.respond(selectedChoice.body, selectedChoice.value)
+    chatBot.respond(selectedChoice.body, selectedChoice.value)
 
   } else if(message.prompt.type === "slider") {
     const response = await prompt({
-      type: 'numeral',
-      name: 'input',
+      type: "numeral",
+      name: "input",
       message: `> ${message.body}`
     })
 
-    bot.respond((<{input: string}>response).input)
+    chatBot.respond((response as { input: string }).input)
   }
 }
 
-bot.on('messagesAdded', onMessagesAdded)
-
-const HelpMiddleware: Middleware = (body, value, bot) => {
-  if(body.toLowerCase() === "help") {
-    bot.pushDialogue(new ScriptedDialogue("help", HelpDialogue))
-    return false
-  }
-  return true
-}
-
-const CommandMiddleware: Middleware = (body, value, bot) => {
-  if(!body.toLowerCase().startsWith("/")) {
+const HelpMiddleware: Middleware = {
+  before: (body, value, bot) => {
+    if(body.toLowerCase() === "help") {
+      bot.pushDialogueWithIdentifier("help")
+      return false
+    }
     return true
   }
-
-  bot.interjectMessages([`Running command: ${body}`])
-
-  return false
 }
 
-bot.use(HelpMiddleware)
-bot.use(CommandMiddleware)
-bot.start()
+const CommandMiddleware: Middleware = {
+  before: (body, value, bot) => {
+    if(body.toLowerCase().startsWith("/")) {
+      bot.interjectMessages([`Running command: ${body}`])
+      return false
+    }
+    return true
+  }
+}
+
+chatBot.on("messagesAdded", onMessagesAdded)
+chatBot.use(HelpMiddleware)
+chatBot.use(CommandMiddleware)
+chatBot.start()

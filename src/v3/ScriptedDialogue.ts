@@ -1,4 +1,4 @@
-import Dialogue, { StepFunction, StepResult, DialogueSnapshot, ContinuingStepResult, PromptStepResult } from "./Dialogue";
+import Dialogue, { DialogueSnapshot, StepFunction, StepResult } from "./Dialogue"
 
 export interface DialogueScript<State> {
   start: StepFunction<State>
@@ -28,7 +28,7 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
     }
   }
 
-  public onReceiveResponse(response?: unknown): boolean {
+  onReceiveResponse(response?: unknown): boolean {
     if(this.nextStep) {
       this.runStep(this.nextStep, response, this.state)
       return true
@@ -37,11 +37,11 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
     }
   }
 
-  public start() {
+  start() {
     this.runStep(this.script.start, undefined, this.state)
   }
 
-  public jumpToStep(stepName: string) {
+  jumpToStep(stepName: string) {
     this.nextStep = this.script[stepName]
     // TODO: Clear the message log
   }
@@ -49,32 +49,27 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
   private async runStep(step: StepFunction<State>, response: unknown | undefined, state: State) {
     const stepResult: StepResult<State> = await step.call(this.script, response, state)
 
-    if(isContinuingStepResult(stepResult)) {
+    if (stepResult.nextStep) {
       this.nextStep = stepResult.nextStep
     } else {
       this.nextStep = undefined
     }
 
-    this.onStep && this.onStep(stepResult, this.nextStep === undefined)
+    if(this.onStep) {
+      this.onStep(stepResult, this.nextStep === undefined)
+    }
 
-    if(this.nextStep && !isPromptingStepResult(stepResult)) {
+    // Go to the next step immediately if there is a next step and no prompt
+    if(this.nextStep && !stepResult.prompt) {
       this.runStep(this.nextStep, undefined, this.state)
     }
   }
 
-  public get snapshot(): DialogueSnapshot<State> {
+  get snapshot(): DialogueSnapshot<State> {
     return {
       identifier: this.identifier,
       state: this.state,
       nextStepName: this.nextStep && this.nextStep.name
     }
   }
-}
-
-function isContinuingStepResult(result: StepResult<any>): result is ContinuingStepResult<any> {
-  return (<any>result).nextStep !== "undefined"
-}
-
-function isPromptingStepResult(result: StepResult<any>): result is PromptStepResult<any> {
-  return (<any>result).prompt !== "undefined"
 }

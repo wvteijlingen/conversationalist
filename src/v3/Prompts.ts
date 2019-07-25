@@ -8,12 +8,12 @@ interface SliderPrompt {
 
 interface InlinePickerPrompt {
   type: "inlinePicker"
-  choices: { body: string, value: unknown }[]
+  choices: Array<{ body: string, value: unknown }>
 }
 
 interface PickerPrompt {
   type: "picker",
-  choices: { body: string, value: unknown }[]
+  choices: Array<{ body: string, value: unknown }>
 }
 
 type Prompt = TextPrompt | InlinePickerPrompt | SliderPrompt | PickerPrompt

@@ -3,7 +3,18 @@
     "enquirer": "^2.3.0"
   },
   "devDependencies": {
+    "@types/jest": "^24.0.15",
     "@types/node": "^12.6.2",
+    "jest": "^24.8.0",
+    "ts-jest": "^24.0.2",
+    "tslint": "^5.18.0",
     "typescript": "^3.5.3"
+  },
+  "scripts": {
+    "build": "yarn tsc",
+    "watch": "yarn tsc -w",
+    "start": "yarn build && node build/v3/run.js",
+    "lint": "yarn tslint src/v3/**/*.ts{,x}",
+    "test": "jest"
   }
 }
