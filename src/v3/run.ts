@@ -6,6 +6,7 @@ import OnboardingDialogue from "./dialogues/OnboardingDialogue"
 import ScriptedDialogue from "./ScriptedDialogue"
 
 const chatBot = new Bot(new ScriptedDialogue("onboarding", OnboardingDialogue))
+chatBot.debugMode = true
 
 chatBot.initDialogue = identifier => {
   switch (identifier) {
@@ -29,7 +30,7 @@ async function onMessagesAdded(messages: Message[]) {
     return
   }
 
-  if (message.prompt === undefined) {
+  if(message.prompt === undefined) {
     // tslint:disable-next-line: no-console
     console.log(`> ${message.body}`)
 

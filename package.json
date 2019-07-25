@@ -1,4 +1,6 @@
 {
+  "license": "UNLICENSED",
+  "private": true,
   "dependencies": {
     "enquirer": "^2.3.0"
   },

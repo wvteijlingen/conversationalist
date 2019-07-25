@@ -4,7 +4,7 @@ import OnboardingConversation, { BotMessage } from "./ImperativeConversation";
 let conversation = new OnboardingConversation()
 
 async function onBotMessageAdded(message: BotMessage) {
-  if (message.responseType === undefined) {
+  if(message.responseType === undefined) {
     console.log(message.body)
 
   } else if(message.responseType === "text") {

@@ -87,7 +87,7 @@
 //       this.username = response
 //     }
 //
-//     if (lastMessage.id === 4 && response === "Y") || (lastMessage.id === "5" && response.id === "Y") {
+//     if(lastMessage.id === 4 && response === "Y") || (lastMessage.id === "5" && response.id === "Y") {
 //       this.userIsReadyToStart = true;
 //     }
 //

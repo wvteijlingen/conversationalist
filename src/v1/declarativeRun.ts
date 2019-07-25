@@ -5,7 +5,7 @@ import { BotMessage } from './interfaces';
 let conversation = new DeclarativeConversation()
 
 async function onMessageReceived(message: BotMessage) {
-  if (message.responseType === undefined) {
+  if(message.responseType === undefined) {
     console.log(message.body)
 
   } else if(message.responseType === "text") {

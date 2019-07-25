@@ -33,6 +33,9 @@ interface BotSnapshot {
 export class Bot extends EventEmitter {
   messageLog: Message[] = []
   initDialogue?: (identifier: string) => Dialogue<any>
+  logger?: (message: string) => void
+  debugMode = false
+
   private dialogues: Array<Dialogue<any>> = []
   private middlewares: Middleware[] = []
 
@@ -96,7 +99,7 @@ export class Bot extends EventEmitter {
     this.addMessages([message])
 
     if(this.dialogues.length === 0) {
-      console.warn("Received response but there are no dialogues on the stack.")
+      this.logDebug("Received response but there are no dialogues on the stack.")
     }
 
     for(let i = this.dialogues.length - 1; i >= 0; i--) {
@@ -108,10 +111,11 @@ export class Bot extends EventEmitter {
   }
 
   pushDialogueWithIdentifier<State>(identifier: string) {
-    if (!this.initDialogue) {
+    if(!this.initDialogue) {
       throw new Error("`initDialogue` is not implemented.")
     }
     const nextDialogue = this.initDialogue(identifier)
+
     this.pushDialogue(nextDialogue, true)
   }
 
@@ -137,11 +141,13 @@ export class Bot extends EventEmitter {
   private pushDialogue<State>(dialogue: Dialogue<State>, runStartStep: boolean = true) {
     // console.log("Pushing dialogue dialogue", dialogue.identifier)
 
+    this.logDebug(`Pushing dialogue: ${dialogue}`)
+
     this.dialogues.push(dialogue)
 
     dialogue.onStep = (result, isFinished) => {
-      for (const middleware of this.middlewares.slice().reverse()) {
-        if (!middleware.after) {
+      for(const middleware of this.middlewares.slice().reverse()) {
+        if(!middleware.after) {
           continue
         }
         middleware.after(result, this)
@@ -150,12 +156,12 @@ export class Bot extends EventEmitter {
       const messages = this.messagesFromStepResult(result)
       this.addMessages(messages)
 
-      if (isFinished) {
+      if(isFinished) {
         this.removeDialogue(dialogue)
       }
 
-      if (result.nextDialogueIdentifier !== undefined) {
-        if (!this.initDialogue) {
+      if(result.nextDialogueIdentifier !== undefined) {
+        if(!this.initDialogue) {
           throw new Error("`initDialogue` is not implemented.")
         }
         const nextDialogue = this.initDialogue(result.nextDialogueIdentifier)
@@ -163,7 +169,7 @@ export class Bot extends EventEmitter {
       }
     }
 
-    if (runStartStep) {
+    if(runStartStep) {
       dialogue.start()
     }
   }
@@ -183,6 +189,8 @@ export class Bot extends EventEmitter {
     dialogue.onStep = undefined
     this.dialogues = this.dialogues.filter(e => e !== dialogue)
 
+    this.logDebug(`Removed dialogue: ${dialogue}`)
+
     // const currentRunner = this.dialogues[this.dialogues.length - 1]
     // currentRunner.onReceiveResponse(undefined)
   }
@@ -200,6 +208,16 @@ export class Bot extends EventEmitter {
       body,
       prompt: index === array.length - 1 ? result.prompt : undefined
     } as BotMessage))
+  }
+
+  private logDebug(message: string) {
+    if(this.logger) {
+      this.logger("Received response but there are no dialogues on the stack.")
+    }
+
+    if (this.debugMode) {
+      this.interjectMessages([message])
+    }
   }
 }
 

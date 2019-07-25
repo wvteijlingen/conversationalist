@@ -1,0 +1,36 @@
+{
+  "messageLog": [
+    {
+      "id": "93c3099f-0dd1-4d69-9b5f-881cced4a221",
+      "author": "bot",
+      "creationDate": "2019-07-25T13:00:32.330Z",
+      "body": "I’m Oki and I am here to help you get treated better and faster."
+    },
+    {
+      "id": "4cac091b-cad5-460f-ad65-cf1e24b5aa41",
+      "author": "bot",
+      "creationDate": "2019-07-25T13:00:32.330Z",
+      "body": "Are you signing up or have you been here before?",
+      "prompt": {
+        "type": "inlinePicker",
+        "choices": [
+          {
+            "body": "👋 I'm new here",
+            "value": "NEW"
+          },
+          {
+            "body": "Been here before",
+            "value": "EXISTING"
+          }
+        ]
+      }
+    }
+  ],
+  "dialogues": [
+    {
+      "identifier": "onboarding",
+      "state": {},
+      "nextStepName": "handleNewOrExisting"
+    }
+  ]
+}

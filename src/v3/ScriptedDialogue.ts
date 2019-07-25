@@ -49,7 +49,7 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
   private async runStep(step: StepFunction<State>, response: unknown | undefined, state: State) {
     const stepResult: StepResult<State> = await step.call(this.script, response, state)
 
-    if (stepResult.nextStep) {
+    if(stepResult.nextStep) {
       this.nextStep = stepResult.nextStep
     } else {
       this.nextStep = undefined
