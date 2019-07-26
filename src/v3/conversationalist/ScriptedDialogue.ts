@@ -6,11 +6,11 @@ interface ScriptStepResult<State> extends StepResult {
 export type StepFunction<State> = (response: UserResponse, data: State) => ScriptStepResult<State>
 
 export interface Script<State> {
-  start: StepFunction<State>
+  start: StepFunction<State> & ThisType<this>
   [key: string]: StepFunction<State> & ThisType<this>
 }
 
-export default class ScriptedDialogue<State> implements Dialogue<State> {
+export default class ScriptedDialogue<State = { }> implements Dialogue<State> {
   identifier: string
   script: Script<State>
   onStep?: (result: StepResult, isFinished: boolean) => void
@@ -26,7 +26,7 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
   constructor(identifier: string, script: Script<State>, initialState?: State, snapshot?: DialogueSnapshot<State>) {
     this.identifier = identifier
     this.script = script
-    this.state = initialState || {} as State
+    this.state = initialState || { } as State
     if (snapshot && snapshot.nextStepName) {
       this.nextStep = script[snapshot.nextStepName]
     }
@@ -36,7 +36,7 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
     this.runStep(this.script.start, undefined, this.state)
   }
 
-  rewind(rewindData: any): void {
+  rewind(rewindData: any) {
     this.nextStep = this.script[rewindData.nextStepName]
   }
 
@@ -49,16 +49,16 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
     }
   }
 
-  onInterrupt(): void {
+  onInterrupt() {
     //
   }
 
-  onResume(): void {
+  onResume() {
     //
   }
 
   private async runStep(step: StepFunction<State>, response: unknown | undefined, state: State) {
-    const stepResult: ScriptStepResult<State> = await step.call(this.script, response, state)
+    const stepResult = await step.call(this.script, response, state)
 
     if(stepResult.nextStep) {
       this.nextStep = stepResult.nextStep

@@ -1,9 +1,9 @@
 {
   "messageLog": [
     {
-      "id": "23a47e5e-6020-420f-9c6e-97da667afd8f",
+      "id": "2bffadd1-6694-4a83-aa06-ee03982a69cd",
       "author": "bot",
-      "creationDate": "2019-07-26T14:58:29.179Z",
+      "creationDate": "2019-07-26T15:53:36.676Z",
       "body": "I’m Oki and I am here to help you get treated better and faster.",
       "_meta": {
         "dialogueIdentifier": "onboarding",
@@ -13,9 +13,9 @@
       }
     },
     {
-      "id": "3d2dd76d-cd1c-49a5-97ad-90715bb5072a",
+      "id": "d6e72e7d-c157-406b-87e6-dbac6299230b",
       "author": "bot",
-      "creationDate": "2019-07-26T14:58:29.179Z",
+      "creationDate": "2019-07-26T15:53:36.676Z",
       "body": "Are you signing up or have you been here before?",
       "prompt": {
         "type": "inlinePicker",
@@ -38,16 +38,16 @@
       }
     },
     {
-      "id": "cb116854-41e3-4a7c-a6c8-f5678797bbf9",
+      "id": "f4b8f28e-451e-425e-b155-7f8450eb874b",
       "author": "user",
-      "creationDate": "2019-07-26T14:58:30.024Z",
+      "creationDate": "2019-07-26T15:53:39.683Z",
       "body": "👋 I'm new here",
       "value": "NEW"
     },
     {
-      "id": "92860be9-1853-47d6-acf6-48843876682e",
+      "id": "8769a921-0a85-4c6f-95ef-f5bf766dfd7b",
       "author": "bot",
-      "creationDate": "2019-07-26T14:58:30.025Z",
+      "creationDate": "2019-07-26T15:53:39.685Z",
       "body": "Welcome! Let’s get you set up!",
       "_meta": {
         "dialogueIdentifier": "onboarding",
@@ -57,9 +57,9 @@
       }
     },
     {
-      "id": "2fb604b2-bc04-45dc-b085-ab12bb0973ec",
+      "id": "06912629-36ff-4933-a311-3b4e0e6ee87d",
       "author": "bot",
-      "creationDate": "2019-07-26T14:58:30.025Z",
+      "creationDate": "2019-07-26T15:53:39.685Z",
       "body": "What’s your name?",
       "prompt": {
         "type": "text"
@@ -70,69 +70,13 @@
           "nextStepName": "handleUsername"
         }
       }
-    },
-    {
-      "id": "519f7a34-57ca-42d2-86af-ccc2dd28486b",
-      "author": "user",
-      "creationDate": "2019-07-26T14:58:31.129Z",
-      "body": "ward"
-    },
-    {
-      "id": "d267d453-b648-48e8-9b73-efe32bf25f89",
-      "author": "bot",
-      "creationDate": "2019-07-26T14:58:31.130Z",
-      "body": "Hey ward.",
-      "_meta": {
-        "dialogueIdentifier": "onboarding"
-      }
-    },
-    {
-      "id": "93e0e824-52fa-47f5-85d1-55179dd8db21",
-      "author": "bot",
-      "creationDate": "2019-07-26T14:58:31.131Z",
-      "body": "Please paste your referral code below - this would’ve been sent to you by your doctor in an email.",
-      "prompt": {
-        "type": "text"
-      },
-      "_meta": {
-        "dialogueIdentifier": "onboarding",
-        "rewindData": {
-          "nextStepName": "handleReferralCode"
-        }
-      }
-    },
-    {
-      "id": "dd206645-7273-4311-8c57-d541bff75064",
-      "author": "user",
-      "creationDate": "2019-07-26T14:58:38.911Z",
-      "body": "dw"
-    },
-    {
-      "id": "cad9cc9b-c58c-4ef4-aa03-7d4413fe818a",
-      "author": "bot",
-      "creationDate": "2019-07-26T14:58:38.914Z",
-      "body": "Perfect! We also need to send you a brand new wearable. Which postcode shall we send one to?",
-      "prompt": {
-        "type": "text"
-      },
-      "_meta": {
-        "dialogueIdentifier": "onboarding",
-        "rewindData": {
-          "nextStepName": "handlePostcode"
-        }
-      }
     }
   ],
   "dialogues": [
     {
       "identifier": "onboarding",
       "state": {},
-      "nextStepName": "handlePostcode"
-    },
-    {
-      "identifier": "onboarding",
-      "state": {},
-      "nextStepName": "handlePostcode"
+      "nextStepName": "handleUsername"
     }
   ]
 }

@@ -1,4 +1,0 @@
-let messageQueue = []
-function queue() {
-
-}

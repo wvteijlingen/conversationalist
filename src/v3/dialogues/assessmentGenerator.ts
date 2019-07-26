@@ -1,3 +1,4 @@
+import { DialogueSnapshot } from "../conversationalist/Dialogue"
 import ScriptedDialogue, { Script } from "../conversationalist/ScriptedDialogue"
 
 interface Params {
@@ -8,8 +9,12 @@ interface Params {
   answers: Array<{ value: number, body: string }>
 }
 
+interface State {
+  totalPoints: number
+}
+
 export default function generateAssessmentDialogue(data: Params) {
-  const script: Script<{ totalPoints: number }> = {
+  const script: Script<State> = {
     start() {
       // tslint:disable-next-line: no-string-literal
       return { body: data.startMessage, nextStep: script["prompt_0"] }
@@ -34,5 +39,9 @@ export default function generateAssessmentDialogue(data: Params) {
     }
   })
 
-  return new ScriptedDialogue(data.identifier, script)
+  return class extends ScriptedDialogue<State> {
+    constructor(snapshot?: DialogueSnapshot<State>) {
+      super("help", script, { totalPoints: 0 }, snapshot)
+    }
+  }
 }

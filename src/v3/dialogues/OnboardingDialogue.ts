@@ -1,11 +1,11 @@
+import { DialogueSnapshot } from "../conversationalist/Dialogue"
 import ScriptedDialogue, { Script } from "../conversationalist/ScriptedDialogue"
-import { DialogueSnapshot } from "../conversationalist/Dialogue";
 
 interface State {
   username?: string
 }
 
-const OnboardingDialogue: Script<State> = {
+const script: Script<State> = {
   start(response, state) {
     return {
       body: ["I’m Oki and I am here to help you get treated better and faster.", "Are you signing up or have you been here before?"],
@@ -113,10 +113,8 @@ const OnboardingDialogue: Script<State> = {
   }
 }
 
-export function fromSnapshot(s: DialogueSnapshot<State>) {
-  return new ScriptedDialogue("onboarding", OnboardingDialogue, undefined, s)
-}
-
-export function fresh() {
-  return new ScriptedDialogue("onboarding", OnboardingDialogue)
+export default class OnboardingDialogue extends ScriptedDialogue<State> {
+  constructor(snapshot?: DialogueSnapshot<State>) {
+    super("onboarding", script, { }, snapshot)
+  }
 }

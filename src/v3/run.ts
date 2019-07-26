@@ -2,29 +2,29 @@ import { prompt } from "enquirer"
 import fs from "fs"
 import { Bot, Message, Middleware } from "./conversationalist/Bot"
 import Prompt from "./conversationalist/Prompts"
-import * as HelpDialogue from "./dialogues/HelpDialogue"
-import * as OnboardingDialogue from "./dialogues/OnboardingDialogue"
+import HelpDialogue from "./dialogues/HelpDialogue"
+import OnboardingDialogue from "./dialogues/OnboardingDialogue"
 
 let chatBot: Bot
 if(process.argv[2]) {
   const snapshot = JSON.parse(fs.readFileSync(process.argv[2]).toString())
   chatBot = Bot.fromSnapshot(snapshot, s => {
     switch(s.identifier) {
-      case "onboarding": return OnboardingDialogue.fromSnapshot(s)
-      case "help": return HelpDialogue.fromSnapshot(s)
+      case "onboarding": return new OnboardingDialogue(s)
+      case "help": return new HelpDialogue(s)
       default:
         throw new Error(`Unknown dialogue identifier: ${s.identifier}`)
     }
   })
 } else {
-  chatBot = new Bot(OnboardingDialogue.fresh())
+  chatBot = new Bot(new OnboardingDialogue())
 }
 
 chatBot.debugMode = true
 chatBot.dialogueFromIdentifier = identifier => {
   switch (identifier) {
-    case "onboarding": return OnboardingDialogue.fresh()
-    case "help": return HelpDialogue.fresh()
+    case "onboarding": return new OnboardingDialogue()
+    case "help": return new HelpDialogue()
     default:
       throw new Error(`Unknown dialogue identifier: ${identifier}`)
   }

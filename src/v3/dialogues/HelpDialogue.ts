@@ -1,7 +1,7 @@
 import { DialogueSnapshot } from "../conversationalist/Dialogue"
 import ScriptedDialogue, { Script } from "../conversationalist/ScriptedDialogue"
 
-const HelpDialogue: Script<{ }> = {
+const script: Script<{ }> = {
   start(response, state) {
     return {
       body: ["Do you need help with something?"],
@@ -34,10 +34,8 @@ const HelpDialogue: Script<{ }> = {
   }
 }
 
-export function fromSnapshot(s: DialogueSnapshot<{ }>) {
-  return new ScriptedDialogue("help", HelpDialogue, undefined, s)
-}
-
-export function fresh() {
-  return new ScriptedDialogue("help", HelpDialogue)
+export default class OnboardingDialogue extends ScriptedDialogue<{ }> {
+  constructor(snapshot?: DialogueSnapshot<{ }>) {
+    super("help", script, { }, snapshot)
+  }
 }
