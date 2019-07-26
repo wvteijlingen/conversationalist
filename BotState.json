@@ -1,9 +1,9 @@
 {
   "messageLog": [
     {
-      "id": "08a9bdc4-ad4b-44e8-9399-7e7546897057",
+      "id": "09661041-5dc5-430b-80ca-4971de287a4d",
       "author": "bot",
-      "creationDate": "2019-07-26T14:11:57.144Z",
+      "creationDate": "2019-07-26T14:29:42.330Z",
       "body": "I’m Oki and I am here to help you get treated better and faster.",
       "_meta": {
         "dialogueIdentifier": "onboarding",
@@ -13,9 +13,9 @@
       }
     },
     {
-      "id": "5ddf81ed-4e4c-4bba-a89f-bb4c92d0153d",
+      "id": "91ee83e1-44d3-406f-82a7-962efdb2b0cb",
       "author": "bot",
-      "creationDate": "2019-07-26T14:11:57.144Z",
+      "creationDate": "2019-07-26T14:29:42.330Z",
       "body": "Are you signing up or have you been here before?",
       "prompt": {
         "type": "inlinePicker",
@@ -36,13 +36,121 @@
           "nextStepName": "handleNewOrExisting"
         }
       }
+    },
+    {
+      "id": "75d45ce2-3c24-4096-a253-2af28a6135eb",
+      "author": "user",
+      "creationDate": "2019-07-26T14:29:44.390Z",
+      "body": "👋 I'm new here",
+      "value": "NEW"
+    },
+    {
+      "id": "82526904-5b52-485a-bddb-8138bf2d386b",
+      "author": "bot",
+      "creationDate": "2019-07-26T14:29:44.391Z",
+      "body": "Welcome! Let’s get you set up!",
+      "_meta": {
+        "dialogueIdentifier": "onboarding",
+        "rewindData": {
+          "nextStepName": "handleUsername"
+        }
+      }
+    },
+    {
+      "id": "8ebf2862-980d-4260-8dd4-fb336c51e45a",
+      "author": "bot",
+      "creationDate": "2019-07-26T14:29:44.391Z",
+      "body": "What’s your name?",
+      "prompt": {
+        "type": "text"
+      },
+      "_meta": {
+        "dialogueIdentifier": "onboarding",
+        "rewindData": {
+          "nextStepName": "handleUsername"
+        }
+      }
+    },
+    {
+      "id": "a27a0ec4-b5d4-4334-8614-a632b2fe212b",
+      "author": "bot",
+      "creationDate": "2019-07-26T14:29:45.470Z",
+      "body": "[Pushing dialogue: help]",
+      "_meta": {
+        "dialogueIdentifier": "_system"
+      }
+    },
+    {
+      "id": "54c96504-620a-4a05-8928-731fed4b4c05",
+      "author": "bot",
+      "creationDate": "2019-07-26T14:29:45.471Z",
+      "body": "Do you need help with something?",
+      "prompt": {
+        "type": "inlinePicker",
+        "choices": [
+          {
+            "body": "Yes",
+            "value": "TRUE"
+          },
+          {
+            "body": "No",
+            "value": "FALSE"
+          }
+        ]
+      },
+      "_meta": {
+        "dialogueIdentifier": "help",
+        "rewindData": {
+          "nextStepName": "handle"
+        }
+      }
+    },
+    {
+      "id": "801e7d1f-ec89-4738-86d1-5c6fd649f89c",
+      "author": "user",
+      "creationDate": "2019-07-26T14:29:46.248Z",
+      "body": "No",
+      "value": "FALSE"
+    },
+    {
+      "id": "60700b87-aed4-42c0-af48-f662ab932698",
+      "author": "bot",
+      "creationDate": "2019-07-26T14:29:46.249Z",
+      "body": "Ok, let's get back to where we left off then. As I was saying...",
+      "_meta": {
+        "dialogueIdentifier": "help"
+      }
+    },
+    {
+      "id": "8ebf2862-980d-4260-8dd4-fb336c51e45a",
+      "author": "bot",
+      "creationDate": "2019-07-26T14:29:44.391Z",
+      "body": "What’s your name?",
+      "prompt": {
+        "type": "text"
+      },
+      "_meta": {
+        "dialogueIdentifier": "onboarding",
+        "rewindData": {
+          "nextStepName": "handleUsername"
+        }
+      }
+    },
+    {
+      "id": "0ca8f803-b241-42e7-9493-857acdf7b3f7",
+      "author": "bot",
+      "creationDate": "2019-07-26T14:29:46.251Z",
+      "body": "[Removed dialogue: help]",
+      "_meta": {
+        "dialogueIdentifier": "_system"
+      }
     }
   ],
   "dialogues": [
     {
       "identifier": "onboarding",
       "state": {},
-      "nextStepName": "handleNewOrExisting"
+      "nextStepName": "handleUsername"
     }
   ]
 }

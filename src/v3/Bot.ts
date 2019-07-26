@@ -164,7 +164,8 @@ export class Bot extends EventEmitter {
       id: uuidv4(),
       author: "bot",
       creationDate: new Date(),
-      body: message
+      body: message,
+      _meta: { dialogueIdentifier: "_system" }
     }) as BotMessage)
 
     this.addMessages(botMessages)
@@ -213,21 +214,22 @@ export class Bot extends EventEmitter {
   }
 
   private removeDialogue<State>(dialogue: Dialogue<State>) {
-    // console.log("Removing dialogue dialogue", dialogue.identifier)
-
-    // if(this.dialogues.length <= 1) {
-    //   throw new Error("Cannot remove root dialogue")
-    // }
-
     dialogue.onStep = undefined
     this.dialogues = this.dialogues.filter(e => e !== dialogue)
 
-    this.activeDialogue && this.activeDialogue.onResume()
+    // Repeat last bot message of the previous dialogue
+    if(this.activeDialogue) {
+      for(let i = this.messageLog.length - 1; i >= 0; i--) {
+        const message = this.messageLog[i]
+        if(message.author === "bot" && message._meta.dialogueIdentifier === this.activeDialogue.identifier) {
+          this.addMessages([message])
+          break
+        }
+      }
+      this.activeDialogue.onResume()
+    }
 
     this.logDebug(`Removed dialogue: ${dialogue.identifier}`)
-
-    // const currentRunner = this.dialogues[this.dialogues.length - 1]
-    // currentRunner.onReceiveResponse(undefined)
   }
 
   private messagesFromStepResult(result: StepResult, dialogueIdentifier: string): BotMessage[] {
@@ -254,7 +256,7 @@ export class Bot extends EventEmitter {
       this.logger("Received response but there are no dialogues on the stack.")
     }
 
-    if (this.debugMode) {
+    if(this.debugMode) {
       this.interjectMessages([`[${message}]`])
     }
   }

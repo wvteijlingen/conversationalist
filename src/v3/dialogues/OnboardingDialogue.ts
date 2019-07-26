@@ -105,15 +105,9 @@ const OnboardingDialogue: Script<State> = {
     return {
       body: [
         "I’m on it! The device should be with you in 24 hours. Don’t forget to check back in with me when it arrives.",
-        // "Now, let's transition to another dialogue"
+        "Now, let's transition to another dialogue"
       ],
-      // nextStep: this.startHelpDialogue
-    }
-  },
-
-  startHelpDialogue(response, state) {
-    return {
-      nextDialogueIdentifier: "a"
+      nextDialogueIdentifier: "help"
     }
   }
 }
