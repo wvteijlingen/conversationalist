@@ -1,4 +1,4 @@
-import ScriptedDialogue, { Script } from "../ScriptedDialogue"
+import ScriptedDialogue, { Script } from "../conversationalist/ScriptedDialogue"
 
 interface Params {
   identifier: string

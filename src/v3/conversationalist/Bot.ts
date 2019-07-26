@@ -48,7 +48,7 @@ export class Bot extends EventEmitter {
     this.pushDialogue(rootDialogue, false)
   }
 
-  static fromSnapshot(snapshot: BotSnapshot, hydrator: <S>(snapshot: DialogueSnapshot<S>) => Dialogue<S>) {
+  static fromSnapshot(snapshot: BotSnapshot, hydrator: (snapshot: DialogueSnapshot<any>) => Dialogue<any>) {
     const dialogues = snapshot.dialogues.map(e => hydrator(e))
     const bot = new Bot(dialogues[0])
     for(const dialogue of dialogues) {

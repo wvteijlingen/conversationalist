@@ -1,4 +1,5 @@
-import ScriptedDialogue, { Script } from "../ScriptedDialogue"
+import ScriptedDialogue, { Script } from "../conversationalist/ScriptedDialogue"
+import { DialogueSnapshot } from "../conversationalist/Dialogue";
 
 interface State {
   username?: string
@@ -112,6 +113,10 @@ const OnboardingDialogue: Script<State> = {
   }
 }
 
-export default (function() {
+export function fromSnapshot(s: DialogueSnapshot<State>) {
+  return new ScriptedDialogue("onboarding", OnboardingDialogue, undefined, s)
+}
+
+export function fresh() {
   return new ScriptedDialogue("onboarding", OnboardingDialogue)
-})()
+}

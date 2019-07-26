@@ -1,6 +1,7 @@
-import ScriptedDialogue, { Script } from "../ScriptedDialogue"
+import { DialogueSnapshot } from "../conversationalist/Dialogue"
+import ScriptedDialogue, { Script } from "../conversationalist/ScriptedDialogue"
 
-const HelpDialogue: Script<void> = {
+const HelpDialogue: Script<{ }> = {
   start(response, state) {
     return {
       body: ["Do you need help with something?"],
@@ -33,6 +34,10 @@ const HelpDialogue: Script<void> = {
   }
 }
 
-export default (function() {
+export function fromSnapshot(s: DialogueSnapshot<{ }>) {
+  return new ScriptedDialogue("help", HelpDialogue, undefined, s)
+}
+
+export function fresh() {
   return new ScriptedDialogue("help", HelpDialogue)
-})()
+}

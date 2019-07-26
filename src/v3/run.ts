@@ -1,19 +1,32 @@
 import { prompt } from "enquirer"
 import fs from "fs"
-import { Bot, Message, Middleware } from "./Bot"
-import HelpDialogue from "./dialogues/HelpDialogue"
-import OnboardingDialogue from "./dialogues/OnboardingDialogue"
-import Prompt from "./Prompts"
+import { Bot, Message, Middleware } from "./conversationalist/Bot"
+import Prompt from "./conversationalist/Prompts"
+import * as HelpDialogue from "./dialogues/HelpDialogue"
+import * as OnboardingDialogue from "./dialogues/OnboardingDialogue"
 
-const chatBot = new Bot(OnboardingDialogue)
+let chatBot: Bot
+if(process.argv[2]) {
+  const snapshot = JSON.parse(fs.readFileSync(process.argv[2]).toString())
+  chatBot = Bot.fromSnapshot(snapshot, s => {
+    switch(s.identifier) {
+      case "onboarding": return OnboardingDialogue.fromSnapshot(s)
+      case "help": return HelpDialogue.fromSnapshot(s)
+      default:
+        throw new Error(`Unknown dialogue identifier: ${s.identifier}`)
+    }
+  })
+} else {
+  chatBot = new Bot(OnboardingDialogue.fresh())
+}
+
 chatBot.debugMode = true
-
 chatBot.dialogueFromIdentifier = identifier => {
   switch (identifier) {
-    case "onboarding": return OnboardingDialogue
-    case "help": return HelpDialogue
+    case "onboarding": return OnboardingDialogue.fresh()
+    case "help": return HelpDialogue.fresh()
     default:
-      throw new Error("unhandled")
+      throw new Error(`Unknown dialogue identifier: ${identifier}`)
   }
 }
 
@@ -100,4 +113,11 @@ const CommandMiddleware: Middleware = {
 chatBot.on("messagesAdded", onMessagesAdded)
 chatBot.use(HelpMiddleware)
 chatBot.use(CommandMiddleware)
-chatBot.start()
+
+if(process.argv[2]) {
+  if(chatBot.activePrompt) {
+    showPrompt(chatBot.activePrompt, "", "")
+  }
+} else {
+  chatBot.start()
+}
