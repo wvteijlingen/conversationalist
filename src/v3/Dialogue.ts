@@ -8,7 +8,7 @@ export default interface Dialogue<State> {
   snapshot: DialogueSnapshot<State>
 
   start(): void
-  jumpToStep(stepName: string): void
+  // jumpToStep(stepName: string): void
   rewind(rewindData: any): void
 
   // Called when the dialogue receives a response from the user.
@@ -30,7 +30,8 @@ export interface DialogueSnapshot<State> {
 
 export interface StepResult {
   body?: string | string[]
-  prompt?: Prompt | undefined
+  prompt?: Prompt | undefined,
+  rewindData?: any,
   nextDialogueIdentifier?: string
 }
 

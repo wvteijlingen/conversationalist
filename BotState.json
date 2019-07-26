@@ -1,15 +1,21 @@
 {
   "messageLog": [
     {
-      "id": "93c3099f-0dd1-4d69-9b5f-881cced4a221",
+      "id": "08a9bdc4-ad4b-44e8-9399-7e7546897057",
       "author": "bot",
-      "creationDate": "2019-07-25T13:00:32.330Z",
-      "body": "I’m Oki and I am here to help you get treated better and faster."
+      "creationDate": "2019-07-26T14:11:57.144Z",
+      "body": "I’m Oki and I am here to help you get treated better and faster.",
+      "_meta": {
+        "dialogueIdentifier": "onboarding",
+        "rewindData": {
+          "nextStepName": "handleNewOrExisting"
+        }
+      }
     },
     {
-      "id": "4cac091b-cad5-460f-ad65-cf1e24b5aa41",
+      "id": "5ddf81ed-4e4c-4bba-a89f-bb4c92d0153d",
       "author": "bot",
-      "creationDate": "2019-07-25T13:00:32.330Z",
+      "creationDate": "2019-07-26T14:11:57.144Z",
       "body": "Are you signing up or have you been here before?",
       "prompt": {
         "type": "inlinePicker",
@@ -23,6 +29,12 @@
             "value": "EXISTING"
           }
         ]
+      },
+      "_meta": {
+        "dialogueIdentifier": "onboarding",
+        "rewindData": {
+          "nextStepName": "handleNewOrExisting"
+        }
       }
     }
   ],

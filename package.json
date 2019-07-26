@@ -16,6 +16,7 @@
     "build": "yarn tsc",
     "watch": "yarn tsc -w",
     "start": "yarn build && node build/v3/run.js",
+    "start-fast": "ts-node src/v3/run.ts",
     "lint": "yarn tslint src/v3/**/*.ts{,x}",
     "test": "jest"
   }

@@ -65,6 +65,13 @@ export class Bot extends EventEmitter {
     }
   }
 
+  get activePrompt(): Prompt | undefined {
+    const lastMessage = this.messageLog[this.messageLog.length - 1]
+    if(lastMessage.author === "bot") {
+      return lastMessage.prompt
+    }
+  }
+
   // Start the root dialogue.
   start() {
     if(!this.dialogues[0]) {
@@ -108,6 +115,34 @@ export class Bot extends EventEmitter {
     }
   }
 
+  undoResponse(messageId: string) {
+    const index = this.messageLog.findIndex(e => e.id === messageId)
+    if(index === -1) {
+      throw new Error(`Message with id ${messageId} does not exist in the message log.`)
+    }
+
+    // Find the first bot message that preceded the response message
+    let botMessage: BotMessage | undefined
+    for(let i = index; i >= 0; i--) {
+      if(this.messageLog[i].author === "bot") {
+        botMessage = this.messageLog[i] as BotMessage
+        break
+      }
+    }
+
+    if(!botMessage || !botMessage._meta.rewindData) {
+      throw new Error("No rewind data found for preceding bot message.")
+    }
+
+    if(this.activeDialogue === undefined || botMessage._meta.dialogueIdentifier !== this.activeDialogue.identifier) {
+      throw new Error("Cannot undo a response that was given outside of the active dialogue.")
+    }
+
+    this.logDebug(`Undid response ${messageId}`)
+    this.messageLog = this.messageLog.slice(0, index)
+    this.activeDialogue.rewind(botMessage._meta.rewindData)
+  }
+
   pushDialogueWithIdentifier(identifier: string) {
     if(!this.dialogueFromIdentifier) {
       throw new Error("`dialogueFromIdentifier` is not implemented.")
@@ -135,40 +170,12 @@ export class Bot extends EventEmitter {
     this.addMessages(botMessages)
   }
 
-  undoResponse(messageId: string) {
-    const index = this.messageLog.findIndex(e => e.id === messageId)
-    if(index === -1) {
-      throw new Error(`Message with id ${messageId} does not exist in the message log.`)
-    }
-
-    // Find the first bot message that preceded the response message
-    let botMessage: BotMessage | undefined
-    for (let i = index; i >= 0; i--) {
-      if(this.messageLog[i].author === "bot") {
-        botMessage = this.messageLog[i] as BotMessage
-      }
-    }
-
-    if(!botMessage || botMessage._meta.rewindData) {
-      throw new Error("No rewind data found for preceding bot message.")
-    }
-
-    if(this.activeDialogue === undefined || botMessage._meta.dialogueIdentifier !== this.activeDialogue.identifier) {
-      throw new Error("Cannot undo a response that was given outside of the active dialogue.")
-    }
-
-    this.activeDialogue.rewind(botMessage._meta.rewindData)
-    this.messageLog = this.messageLog.slice(0, index)
-  }
-
   // Push the given dialogue to the dialogue stack, optionally running it.
   private pushDialogue(dialogue: Dialogue<unknown>, runStartStep: boolean = true) {
-    // console.log("Pushing dialogue dialogue", dialogue.identifier)
-
-    this.logDebug(`Pushing dialogue: ${dialogue}`)
+    this.logDebug(`Pushing dialogue: ${dialogue.identifier}`)
 
     this.activeDialogue && this.activeDialogue.onInterrupt()
-    this.attachListenersToDialogue(dialogue)
+    dialogue.onStep = (result, isFinished) => this.onDialogueStep(dialogue, result, isFinished)
     this.dialogues.push(dialogue)
 
     if(runStartStep) {
@@ -176,29 +183,27 @@ export class Bot extends EventEmitter {
     }
   }
 
-  private attachListenersToDialogue(dialogue: Dialogue<unknown>) {
-    dialogue.onStep = (result, isFinished) => {
-      for(const middleware of this.middlewares.slice().reverse()) {
-        if(!middleware.after) {
-          continue
-        }
-        middleware.after(result, this)
+  private onDialogueStep(dialogue: Dialogue<unknown>, result: StepResult, isFinished: boolean) {
+    for(const middleware of this.middlewares.slice().reverse()) {
+      if(!middleware.after) {
+        continue
       }
+      middleware.after(result, this)
+    }
 
-      const messages = this.messagesFromStepResult(result)
-      this.addMessages(messages)
+    const messages = this.messagesFromStepResult(result, dialogue.identifier)
+    this.addMessages(messages)
 
-      if(isFinished) {
-        this.removeDialogue(dialogue)
+    if(isFinished) {
+      this.removeDialogue(dialogue)
+    }
+
+    if(result.nextDialogueIdentifier !== undefined) {
+      if(!this.dialogueFromIdentifier) {
+        throw new Error("`dialogueFromIdentifier` is not implemented.")
       }
-
-      if(result.nextDialogueIdentifier !== undefined) {
-        if(!this.dialogueFromIdentifier) {
-          throw new Error("`dialogueFromIdentifier` is not implemented.")
-        }
-        const nextDialogue = this.dialogueFromIdentifier(result.nextDialogueIdentifier)
-        this.pushDialogue(nextDialogue, true)
-      }
+      const nextDialogue = this.dialogueFromIdentifier(result.nextDialogueIdentifier)
+      this.pushDialogue(nextDialogue, true)
     }
   }
 
@@ -219,13 +224,13 @@ export class Bot extends EventEmitter {
 
     this.activeDialogue && this.activeDialogue.onResume()
 
-    this.logDebug(`Removed dialogue: ${dialogue}`)
+    this.logDebug(`Removed dialogue: ${dialogue.identifier}`)
 
     // const currentRunner = this.dialogues[this.dialogues.length - 1]
     // currentRunner.onReceiveResponse(undefined)
   }
 
-  private messagesFromStepResult(result: StepResult): BotMessage[] {
+  private messagesFromStepResult(result: StepResult, dialogueIdentifier: string): BotMessage[] {
     if(result.body === "undefined") {
       return []
     }
@@ -236,7 +241,11 @@ export class Bot extends EventEmitter {
       author: "bot",
       creationDate: new Date(),
       body,
-      prompt: index === array.length - 1 ? result.prompt : undefined
+      prompt: index === array.length - 1 ? result.prompt : undefined,
+      _meta: {
+        dialogueIdentifier,
+        rewindData: result.rewindData
+      }
     } as BotMessage))
   }
 
@@ -246,7 +255,7 @@ export class Bot extends EventEmitter {
     }
 
     if (this.debugMode) {
-      this.interjectMessages([message])
+      this.interjectMessages([`[${message}]`])
     }
   }
 

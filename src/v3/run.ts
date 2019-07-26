@@ -3,6 +3,7 @@ import fs from "fs"
 import { Bot, Message, Middleware } from "./Bot"
 import HelpDialogue from "./dialogues/HelpDialogue"
 import OnboardingDialogue from "./dialogues/OnboardingDialogue"
+import Prompt from "./Prompts"
 
 const chatBot = new Bot(OnboardingDialogue)
 chatBot.debugMode = true
@@ -16,6 +17,38 @@ chatBot.dialogueFromIdentifier = identifier => {
   }
 }
 
+async function showPrompt(p: Prompt, id: string, body: string) {
+  if(p.type === "text") {
+    const response = await prompt({
+      type: "input",
+      name: "input",
+      message: `🤖   ${id}   ${body}`
+    })
+
+    chatBot.respond((response as { input: string }).input)
+
+  } else if(p.type === "inlinePicker" || p.type === "picker") {
+    const response = await prompt({
+      type: "select",
+      name: "input",
+      message: `🤖   ${id}   ${body}`,
+      choices: p.choices.map(e => e.body)
+    })
+
+    const selectedChoice = p.choices.find(e => e.body === (response as { input: string }).input) as { body: string, value: unknown }
+    chatBot.respond(selectedChoice.body, selectedChoice.value)
+
+  } else if(p.type === "slider") {
+    const response = await prompt({
+      type: "numeral",
+      name: "input",
+      message: `🤖   ${id}   ${body}`
+    })
+
+    chatBot.respond((response as { input: string }).input)
+  }
+}
+
 async function onMessagesAdded(messages: Message[]) {
   // Save state
   const snapshot = chatBot.snapshot
@@ -25,43 +58,17 @@ async function onMessagesAdded(messages: Message[]) {
 
   if(message.author === "user") {
     // tslint:disable-next-line: no-console
-    console.log(`< ${message.body}`)
+    console.log(`  👱‍   ${message.id}   ${message.body}`)
     return
   }
 
   if(message.prompt === undefined) {
     // tslint:disable-next-line: no-console
-    console.log(`> ${message.body}`)
+    console.log(`  🤖   ${message.id}   ${message.body}`)
 
-  } else if(message.prompt.type === "text") {
-    const response = await prompt({
-      type: "input",
-      name: "input",
-      message: `> ${message.body}`
-    })
+  } else {
+    showPrompt(message.prompt, message.id, message.body)
 
-    chatBot.respond((response as { input: string }).input)
-
-  } else if(message.prompt.type === "inlinePicker" || message.prompt.type === "picker") {
-    const response = await prompt({
-      type: "select",
-      name: "input",
-      message: `> ${message.body}`,
-      choices: message.prompt.choices.map(e => e.body)
-    })
-
-    const selectedChoice = message.prompt.choices.find(e => e.body === (response as { input: string }).input) as { body: string, value: unknown }
-
-    chatBot.respond(selectedChoice.body, selectedChoice.value)
-
-  } else if(message.prompt.type === "slider") {
-    const response = await prompt({
-      type: "numeral",
-      name: "input",
-      message: `> ${message.body}`
-    })
-
-    chatBot.respond((response as { input: string }).input)
   }
 }
 
@@ -77,8 +84,13 @@ const HelpMiddleware: Middleware = {
 
 const CommandMiddleware: Middleware = {
   before: (body, value, bot) => {
-    if(body.toLowerCase().startsWith("/")) {
+    if(body.toLowerCase().startsWith("/undo")) {
       bot.interjectMessages([`Running command: ${body}`])
+      const id = body.split(" ")[1]
+      bot.undoResponse(id)
+      if(chatBot.activePrompt) {
+        showPrompt(chatBot.activePrompt, "", "")
+      }
       return false
     }
     return true

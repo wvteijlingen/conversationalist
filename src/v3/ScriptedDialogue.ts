@@ -36,8 +36,8 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
     this.runStep(this.script.start, undefined, this.state)
   }
 
-  jumpToStep(stepName: string) {
-    this.nextStep = this.script[stepName]
+  rewind(rewindData: any): void {
+    this.nextStep = this.script[rewindData.nextStepName]
   }
 
   onReceiveResponse(response?: unknown): boolean {
@@ -64,6 +64,10 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
       this.nextStep = stepResult.nextStep
     } else {
       this.nextStep = undefined
+    }
+
+    if(stepResult.prompt && stepResult.nextStep) {
+      stepResult.rewindData = { nextStepName: stepResult.nextStep.name }
     }
 
     if(this.onStep) {
