@@ -1,6 +1,7 @@
-import { DialogueScript } from "../ScriptedDialogue"
+import ScriptedDialogue, { Script } from "../ScriptedDialogue"
 
 interface Params {
+  identifier: string
   startMessage: string
   endMessage: string
   questions: string[]
@@ -8,10 +9,10 @@ interface Params {
 }
 
 export default function generateAssessmentDialogue(data: Params) {
-  const dialogue: DialogueScript<{ totalPoints: number }> = {
+  const script: Script<{ totalPoints: number }> = {
     start() {
       // tslint:disable-next-line: no-string-literal
-      return { body: data.startMessage, nextStep: dialogue["prompt_0"] }
+      return { body: data.startMessage, nextStep: script["prompt_0"] }
     },
 
     end() {
@@ -21,17 +22,17 @@ export default function generateAssessmentDialogue(data: Params) {
 
   data.questions.forEach((question, index, array) => {
     // tslint:disable-next-line: only-arrow-functions
-    dialogue[`prompt_${index}`] = function(response, state) {
+    script[`prompt_${index}`] = function(response, state) {
       if(typeof response === "number") {
         state.totalPoints = state.totalPoints + response
       }
       return {
         body: question,
         prompt: { type: "inlinePicker", choices: data.answers },
-        nextStep: index === array.length - 1 ? dialogue.endMessage : dialogue[`prompt_${index + 1}`]
+        nextStep: index === array.length - 1 ? script.endMessage : script[`prompt_${index + 1}`]
       }
     }
   })
 
-  return dialogue
+  return new ScriptedDialogue(data.identifier, script)
 }

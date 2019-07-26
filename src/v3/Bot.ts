@@ -7,7 +7,11 @@ interface BotMessage {
   author: "bot"
   creationDate: Date
   body: string
-  prompt?: Prompt
+  prompt?: Prompt,
+  _meta: {
+    dialogueIdentifier: string
+    rewindData?: unknown
+  }
 }
 
 interface UserMessage {
@@ -22,7 +26,7 @@ export type Message = BotMessage | UserMessage
 
 export interface Middleware {
   before?: (body: string, value: unknown | undefined, bot: Bot) => boolean
-  after?: (stepResult: StepResult<any>, bot: Bot) => void
+  after?: (stepResult: StepResult, bot: Bot) => void
 }
 
 interface BotSnapshot {
@@ -32,22 +36,16 @@ interface BotSnapshot {
 
 export class Bot extends EventEmitter {
   messageLog: Message[] = []
-  initDialogue?: (identifier: string) => Dialogue<any>
+  dialogueFromIdentifier?: (identifier: string) => Dialogue<any>
   logger?: (message: string) => void
   debugMode = false
 
-  private dialogues: Array<Dialogue<any>> = []
+  private dialogues: Array<Dialogue<unknown>> = []
   private middlewares: Middleware[] = []
 
   constructor(rootDialogue: Dialogue<any>) {
     super()
-    // const dialogues = Array.isArray(dialogue) ? dialogue : [dialogue]
-    // if(dialogues.length === 0) {
-    //   throw new Error("A bot must be constructed with at least 1 dialog dialogue")
-    // }
-    // for(const dialogue of dialogues) {
     this.pushDialogue(rootDialogue, false)
-    // }
   }
 
   static fromSnapshot(snapshot: BotSnapshot, hydrator: <S>(snapshot: DialogueSnapshot<S>) => Dialogue<S>) {
@@ -110,11 +108,11 @@ export class Bot extends EventEmitter {
     }
   }
 
-  pushDialogueWithIdentifier<State>(identifier: string) {
-    if(!this.initDialogue) {
-      throw new Error("`initDialogue` is not implemented.")
+  pushDialogueWithIdentifier(identifier: string) {
+    if(!this.dialogueFromIdentifier) {
+      throw new Error("`dialogueFromIdentifier` is not implemented.")
     }
-    const nextDialogue = this.initDialogue(identifier)
+    const nextDialogue = this.dialogueFromIdentifier(identifier)
 
     this.pushDialogue(nextDialogue, true)
   }
@@ -137,14 +135,48 @@ export class Bot extends EventEmitter {
     this.addMessages(botMessages)
   }
 
+  undoResponse(messageId: string) {
+    const index = this.messageLog.findIndex(e => e.id === messageId)
+    if(index === -1) {
+      throw new Error(`Message with id ${messageId} does not exist in the message log.`)
+    }
+
+    // Find the first bot message that preceded the response message
+    let botMessage: BotMessage | undefined
+    for (let i = index; i >= 0; i--) {
+      if(this.messageLog[i].author === "bot") {
+        botMessage = this.messageLog[i] as BotMessage
+      }
+    }
+
+    if(!botMessage || botMessage._meta.rewindData) {
+      throw new Error("No rewind data found for preceding bot message.")
+    }
+
+    if(this.activeDialogue === undefined || botMessage._meta.dialogueIdentifier !== this.activeDialogue.identifier) {
+      throw new Error("Cannot undo a response that was given outside of the active dialogue.")
+    }
+
+    this.activeDialogue.rewind(botMessage._meta.rewindData)
+    this.messageLog = this.messageLog.slice(0, index)
+  }
+
   // Push the given dialogue to the dialogue stack, optionally running it.
-  private pushDialogue<State>(dialogue: Dialogue<State>, runStartStep: boolean = true) {
+  private pushDialogue(dialogue: Dialogue<unknown>, runStartStep: boolean = true) {
     // console.log("Pushing dialogue dialogue", dialogue.identifier)
 
     this.logDebug(`Pushing dialogue: ${dialogue}`)
 
+    this.activeDialogue && this.activeDialogue.onInterrupt()
+    this.attachListenersToDialogue(dialogue)
     this.dialogues.push(dialogue)
 
+    if(runStartStep) {
+      dialogue.start()
+    }
+  }
+
+  private attachListenersToDialogue(dialogue: Dialogue<unknown>) {
     dialogue.onStep = (result, isFinished) => {
       for(const middleware of this.middlewares.slice().reverse()) {
         if(!middleware.after) {
@@ -161,16 +193,12 @@ export class Bot extends EventEmitter {
       }
 
       if(result.nextDialogueIdentifier !== undefined) {
-        if(!this.initDialogue) {
-          throw new Error("`initDialogue` is not implemented.")
+        if(!this.dialogueFromIdentifier) {
+          throw new Error("`dialogueFromIdentifier` is not implemented.")
         }
-        const nextDialogue = this.initDialogue(result.nextDialogueIdentifier)
+        const nextDialogue = this.dialogueFromIdentifier(result.nextDialogueIdentifier)
         this.pushDialogue(nextDialogue, true)
       }
-    }
-
-    if(runStartStep) {
-      dialogue.start()
     }
   }
 
@@ -189,13 +217,15 @@ export class Bot extends EventEmitter {
     dialogue.onStep = undefined
     this.dialogues = this.dialogues.filter(e => e !== dialogue)
 
+    this.activeDialogue && this.activeDialogue.onResume()
+
     this.logDebug(`Removed dialogue: ${dialogue}`)
 
     // const currentRunner = this.dialogues[this.dialogues.length - 1]
     // currentRunner.onReceiveResponse(undefined)
   }
 
-  private messagesFromStepResult<State>(result: StepResult<State>): BotMessage[] {
+  private messagesFromStepResult(result: StepResult): BotMessage[] {
     if(result.body === "undefined") {
       return []
     }
@@ -218,6 +248,10 @@ export class Bot extends EventEmitter {
     if (this.debugMode) {
       this.interjectMessages([message])
     }
+  }
+
+  private get activeDialogue(): Dialogue<unknown> | undefined {
+    return this.dialogues[this.dialogues.length - 1]
   }
 }
 

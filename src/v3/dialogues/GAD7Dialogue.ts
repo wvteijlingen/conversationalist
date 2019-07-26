@@ -1,6 +1,7 @@
 import generateAssessmentDialogue from "./assessmentGenerator"
 
 const gad7 = {
+  identifier: "gad7",
   startMessage: "Over the last 2 weeks, how often have you been bothered by the following problems?",
   endMessage: "Thank you!",
   questions: [

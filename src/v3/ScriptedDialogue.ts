@@ -1,31 +1,43 @@
-import Dialogue, { DialogueSnapshot, StepFunction, StepResult } from "./Dialogue"
+import Dialogue, { DialogueSnapshot, StepResult, UserResponse } from "./Dialogue"
 
-export interface DialogueScript<State> {
+interface ScriptStepResult<State> extends StepResult {
+  nextStep?: StepFunction<State>
+}
+export type StepFunction<State> = (response: UserResponse, data: State) => ScriptStepResult<State>
+
+export interface Script<State> {
   start: StepFunction<State>
   [key: string]: StepFunction<State> & ThisType<this>
 }
 
 export default class ScriptedDialogue<State> implements Dialogue<State> {
   identifier: string
-  script: DialogueScript<State>
-  onStep?: (result: StepResult<State>, isFinished: boolean) => void
+  script: Script<State>
+  onStep?: (result: StepResult, isFinished: boolean) => void
   onFinish?: (result: State) => void
 
   private state: State
+  private previousStep?: { function: StepFunction<State>, response?: UserResponse }
   private nextStep?: StepFunction<State>
 
-  // Creates a new dialog runner
-  // @param dialogue The dialogue to run
-  // @param initialSate The intial state to start the dialogue with
-  // @param snapshot Optional dialogue snapshot for resuming the dialogue
-  constructor(identifier: string, script: DialogueScript<State>, initialState?: State, snapshot?: DialogueSnapshot<State>) {
+  // @param dialogue The dialogue to run.
+  // @param initialState The intial state to start the dialogue with.
+  // @param snapshot Optional dialogue snapshot for resuming the dialogue.
+  constructor(identifier: string, script: Script<State>, initialState?: State, snapshot?: DialogueSnapshot<State>) {
     this.identifier = identifier
     this.script = script
     this.state = initialState || {} as State
-
-    if(snapshot && snapshot.nextStepName) {
+    if (snapshot && snapshot.nextStepName) {
       this.nextStep = script[snapshot.nextStepName]
     }
+  }
+
+  start() {
+    this.runStep(this.script.start, undefined, this.state)
+  }
+
+  jumpToStep(stepName: string) {
+    this.nextStep = this.script[stepName]
   }
 
   onReceiveResponse(response?: unknown): boolean {
@@ -37,17 +49,16 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
     }
   }
 
-  start() {
-    this.runStep(this.script.start, undefined, this.state)
+  onInterrupt(): void {
+    //
   }
 
-  jumpToStep(stepName: string) {
-    this.nextStep = this.script[stepName]
-    // TODO: Clear the message log
+  onResume(): void {
+    //
   }
 
   private async runStep(step: StepFunction<State>, response: unknown | undefined, state: State) {
-    const stepResult: StepResult<State> = await step.call(this.script, response, state)
+    const stepResult: ScriptStepResult<State> = await step.call(this.script, response, state)
 
     if(stepResult.nextStep) {
       this.nextStep = stepResult.nextStep
@@ -66,9 +77,11 @@ export default class ScriptedDialogue<State> implements Dialogue<State> {
   }
 
   get snapshot(): DialogueSnapshot<State> {
+    const previousStep = this.previousStep
     return {
       identifier: this.identifier,
       state: this.state,
+      previousStep: previousStep ? { name: previousStep.function.name, response: previousStep.response } : undefined,
       nextStepName: this.nextStep && this.nextStep.name
     }
   }

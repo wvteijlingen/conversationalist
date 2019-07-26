@@ -3,15 +3,14 @@ import fs from "fs"
 import { Bot, Message, Middleware } from "./Bot"
 import HelpDialogue from "./dialogues/HelpDialogue"
 import OnboardingDialogue from "./dialogues/OnboardingDialogue"
-import ScriptedDialogue from "./ScriptedDialogue"
 
-const chatBot = new Bot(new ScriptedDialogue("onboarding", OnboardingDialogue))
+const chatBot = new Bot(OnboardingDialogue)
 chatBot.debugMode = true
 
-chatBot.initDialogue = identifier => {
+chatBot.dialogueFromIdentifier = identifier => {
   switch (identifier) {
-    case "onboarding": return new ScriptedDialogue(identifier, OnboardingDialogue)
-    case "help": return new ScriptedDialogue(identifier, HelpDialogue)
+    case "onboarding": return OnboardingDialogue
+    case "help": return HelpDialogue
     default:
       throw new Error("unhandled")
   }

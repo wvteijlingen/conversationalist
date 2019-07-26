@@ -1,6 +1,7 @@
 import generateAssessmentDialogue from "./assessmentGenerator"
 
 const oci = {
+  identifier: "pdss",
   startMessage: "How much distress have you experienced in the past month by the following things?",
   endMessage: "Thank you!",
   questions: [

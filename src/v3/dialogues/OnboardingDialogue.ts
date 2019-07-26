@@ -1,10 +1,10 @@
-import { DialogueScript } from "../ScriptedDialogue"
+import ScriptedDialogue, { Script } from "../ScriptedDialogue"
 
 interface State {
   username?: string
 }
 
-const OnboardingDialogue: DialogueScript<State> = {
+const OnboardingDialogue: Script<State> = {
   start(response, state) {
     return {
       body: ["I’m Oki and I am here to help you get treated better and faster.", "Are you signing up or have you been here before?"],
@@ -118,4 +118,6 @@ const OnboardingDialogue: DialogueScript<State> = {
   }
 }
 
-export default OnboardingDialogue
+export default (function() {
+  return new ScriptedDialogue("onboarding", OnboardingDialogue)
+})()

@@ -1,26 +1,37 @@
 import Prompt from "./Prompts"
 
 export default interface Dialogue<State> {
-  onStep?: (result: StepResult<State>, isFinished: boolean) => void
+  identifier: string
+
+  onStep?: (result: StepResult, isFinished: boolean) => void
   onFinish?: (result: State) => void
   snapshot: DialogueSnapshot<State>
 
-  onReceiveResponse(response?: unknown): boolean
   start(): void
   jumpToStep(stepName: string): void
-}
+  rewind(rewindData: any): void
 
-export type StepFunction<State> = (response: unknown | undefined, data: State) => StepResult<State>
+  // Called when the dialogue receives a response from the user.
+  onReceiveResponse(response: UserResponse): boolean
+
+  // Called when the dialogue is interrupted.
+  onInterrupt(): void
+
+  // Called when the dialogue is resumed after an interruption.
+  onResume(): void
+}
 
 export interface DialogueSnapshot<State> {
   identifier: string
   state: State
+  previousStep?: { name: string, response?: UserResponse }
   nextStepName?: string
 }
 
-export interface StepResult<State> {
+export interface StepResult {
   body?: string | string[]
   prompt?: Prompt | undefined
-  nextStep?: StepFunction<State>
   nextDialogueIdentifier?: string
 }
+
+export type UserResponse = unknown | undefined

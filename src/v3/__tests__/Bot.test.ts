@@ -1,8 +1,8 @@
 import { Bot } from "../Bot"
-import ScriptedDialogue, { DialogueScript } from "../ScriptedDialogue"
+import ScriptedDialogue, { Script } from "../ScriptedDialogue"
 
 describe("middleware", () => {
-  const dialogue: DialogueScript<{ }> = {
+  const dialogue: Script<{ }> = {
     start() {
       return {
         body: "The result",
@@ -49,7 +49,7 @@ describe("middleware", () => {
 
 describe("handling responses", () => {
   it("passes the response value to the active dialogue", done => {
-    const dialogue: DialogueScript<{ }> = {
+    const dialogue: Script<{ }> = {
       start() {
         return {
           prompt: { type: "text" },
@@ -72,7 +72,7 @@ describe("handling responses", () => {
   })
 
   it("passes the response body to the active dialogue if there is not explicit value", done => {
-    const dialogue: DialogueScript<{ }> = {
+    const dialogue: Script<{ }> = {
       start() {
         return {
           prompt: { type: "text" },
@@ -97,7 +97,7 @@ describe("handling responses", () => {
 
 describe("message events", () => {
   it("emits a messagesAdded event when a bot message is added", done => {
-    const dialogue: DialogueScript<{ }> = {
+    const dialogue: Script<{ }> = {
       start() {
         return { body: "Test message" }
       }
@@ -118,7 +118,7 @@ describe("message events", () => {
   })
 
   it("emits a messagesAdded event when a user message is added", done => {
-    const dialogue: DialogueScript<{ }> = {
+    const dialogue: Script<{ }> = {
       start() {
         return { }
       }
@@ -140,7 +140,7 @@ describe("message events", () => {
   })
 
   it("emits a messagesAdded event when a message is interjected", done => {
-    const dialogue: DialogueScript<{ }> = {
+    const dialogue: Script<{ }> = {
       start() {
         return { }
       }

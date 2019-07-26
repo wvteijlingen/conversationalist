@@ -1,6 +1,7 @@
 import generateAssessmentDialogue from "./assessmentGenerator"
 
 const phq9 = {
+  identifier: "phq9",
   startMessage: "Over the last 2 weeks, how often have you been bothered by the following problems?",
   endMessage: "Thank you!",
   questions: [

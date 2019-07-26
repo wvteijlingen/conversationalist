@@ -1,6 +1,6 @@
-import { DialogueScript } from "../ScriptedDialogue"
+import ScriptedDialogue, { Script } from "../ScriptedDialogue"
 
-const HelpDialogue: DialogueScript<void> = {
+const HelpDialogue: Script<void> = {
   start(response, state) {
     return {
       body: ["Do you need help with something?"],
@@ -33,4 +33,6 @@ const HelpDialogue: DialogueScript<void> = {
   }
 }
 
-export default HelpDialogue
+export default (function() {
+  return new ScriptedDialogue("help", HelpDialogue)
+})()
