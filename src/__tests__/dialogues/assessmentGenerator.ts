@@ -1,5 +1,5 @@
-import { DialogueSnapshot } from "../conversationalist/Dialogue"
-import ScriptedDialogue, { Script } from "../conversationalist/ScriptedDialogue"
+import { DialogueSnapshot } from "../../Dialogue"
+import ScriptedDialogue, { Script } from "../../ScriptedDialogue"
 
 interface Params {
   identifier: string

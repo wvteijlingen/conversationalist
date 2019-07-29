@@ -1,5 +1,5 @@
-import { DialogueSnapshot } from "../conversationalist/Dialogue"
-import ScriptedDialogue, { Script } from "../conversationalist/ScriptedDialogue"
+import { DialogueSnapshot } from "../../Dialogue"
+import ScriptedDialogue, { Script } from "../../ScriptedDialogue"
 
 interface State {
   username?: string
@@ -42,7 +42,7 @@ const script: Script<State> = {
 
     return {
       body: `Hey ${state.username}.`,
-      nextStep: this.promptReferralCode
+      nextStep: this.promptReferralCode,
     }
   },
 

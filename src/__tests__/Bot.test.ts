@@ -1,4 +1,4 @@
-import { Bot } from "../Bot"
+import Bot from "../Bot"
 import ScriptedDialogue, { Script } from "../ScriptedDialogue"
 
 describe("middleware", () => {

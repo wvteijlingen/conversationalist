@@ -1,34 +1,29 @@
 import { prompt } from "enquirer"
 import fs from "fs"
-import { Bot, Message, Middleware } from "./conversationalist/Bot"
-import Prompt from "./conversationalist/Prompts"
+import Bot, { DialogueHydrator, Message, Middleware } from "../Bot"
+import Prompt from "../Prompts"
 import HelpDialogue from "./dialogues/HelpDialogue"
 import OnboardingDialogue from "./dialogues/OnboardingDialogue"
 
-let chatBot: Bot
-if(process.argv[2]) {
-  const snapshot = JSON.parse(fs.readFileSync(process.argv[2]).toString())
-  chatBot = Bot.fromSnapshot(snapshot, s => {
-    switch(s.identifier) {
-      case "onboarding": return new OnboardingDialogue(s)
-      case "help": return new HelpDialogue(s)
-      default:
-        throw new Error(`Unknown dialogue identifier: ${s.identifier}`)
-    }
-  })
-} else {
-  chatBot = new Bot(new OnboardingDialogue())
-}
-
-chatBot.debugMode = true
-chatBot.dialogueFromIdentifier = identifier => {
-  switch (identifier) {
-    case "onboarding": return new OnboardingDialogue()
-    case "help": return new HelpDialogue()
+const hydrator: DialogueHydrator = (identifier, snapshot) => {
+  switch(identifier) {
+    case "onboarding": return new OnboardingDialogue(snapshot)
+    case "help": return new HelpDialogue(snapshot)
     default:
       throw new Error(`Unknown dialogue identifier: ${identifier}`)
   }
 }
+
+let chatBot: Bot
+
+if(process.argv[2]) {
+  const snapshot = JSON.parse(fs.readFileSync(process.argv[2]).toString())
+  chatBot = Bot.fromSnapshot(snapshot, hydrator)
+} else {
+  chatBot = new Bot(new OnboardingDialogue(), hydrator)
+}
+
+chatBot.debugMode = true
 
 async function showPrompt(p: Prompt, id: string, body: string) {
   if(p.type === "text") {

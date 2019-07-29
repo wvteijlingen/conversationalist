@@ -2,11 +2,11 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
-    "enquirer": "^2.3.0"
   },
   "devDependencies": {
     "@types/jest": "^24.0.15",
     "@types/node": "^12.6.2",
+    "enquirer": "^2.3.0",
     "jest": "^24.8.0",
     "ts-jest": "^24.0.2",
     "tslint": "^5.18.0",
@@ -15,9 +15,8 @@
   "scripts": {
     "build": "yarn tsc",
     "watch": "yarn tsc -w",
-    "start": "yarn build && node build/v3/run.js",
-    "start-fast": "ts-node src/v3/run.ts",
-    "lint": "yarn tslint src/v3/**/*.ts{,x}",
+    "start": "yarn build && node build/__test__/run.js",
+    "lint": "yarn tslint src/**/*.ts{,x}",
     "test": "jest"
   }
 }

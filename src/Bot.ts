@@ -1,7 +1,9 @@
 import { EventEmitter } from "events"
 import Dialogue, { DialogueSnapshot, StepResult } from "./Dialogue"
 import Prompt from "./Prompts"
+import { uuidv4 } from "./utils"
 
+// A message sent by the bot.
 interface BotMessage {
   id: string
   author: "bot"
@@ -9,11 +11,12 @@ interface BotMessage {
   body: string
   prompt?: Prompt,
   _meta: {
-    dialogueIdentifier: string
+    dialogueIdentifier: string | "_system"
     rewindData?: unknown
   }
 }
 
+// A message sent by the user.
 interface UserMessage {
   id: string
   author: "user"
@@ -25,46 +28,74 @@ interface UserMessage {
 export type Message = BotMessage | UserMessage
 
 export interface Middleware {
+  // Called after a response is received by the bot, but before it is dispatched
+  // to the active dialogue.
+  // If you return false, processing is halted and the response will not be passed
+  // to subsequent middleware and dialogues.
   before?: (body: string, value: unknown | undefined, bot: Bot) => boolean
+
+  // Called after the active dialogue returned its step result, but before the result
+  // is processed by the bot.
   after?: (stepResult: StepResult, bot: Bot) => void
 }
 
 interface BotSnapshot {
+  didStart: boolean
   messageLog: Message[]
   dialogues: Array<DialogueSnapshot<unknown>>
 }
 
-export class Bot extends EventEmitter {
+export type DialogueHydrator = (dialogueIdentifier: string, snapshot?: DialogueSnapshot<any>) => Dialogue<any>
+
+export default class Bot extends EventEmitter {
+  // All messages that were sent or received by this bot.
   messageLog: Message[] = []
-  dialogueFromIdentifier?: (identifier: string) => Dialogue<any>
+
+  // Used to instantiate a dialogue from a dialogue identifier, optionally with a snapshot.
+  readonly dialogueHydrator?: DialogueHydrator
+
+  // Optional logger that allows you to plug in your own logging backend.
   logger?: (message: string) => void
+
+  // Whether to output debug messages as chat messages.
   debugMode = false
 
   private dialogues: Array<Dialogue<unknown>> = []
   private middlewares: Middleware[] = []
+  private didStart = false
 
-  constructor(rootDialogue: Dialogue<any>) {
+  // Instantiate a new Bot with the given root dialogue and dialogue hydrator.
+  // This does not automatically start the root dialogue.
+  constructor(rootDialogue: Dialogue<any>, dialogueHydrator?: DialogueHydrator) {
     super()
+    this.dialogueHydrator = dialogueHydrator
     this.pushDialogue(rootDialogue, false)
   }
 
-  static fromSnapshot(snapshot: BotSnapshot, hydrator: (snapshot: DialogueSnapshot<any>) => Dialogue<any>) {
-    const dialogues = snapshot.dialogues.map(e => hydrator(e))
-    const bot = new Bot(dialogues[0])
+  // Instantiate a new Bot from the given snapshot.
+  // For each dialogue in the bot snapshot, the dialogue hydrator will be called to instantiate the dialogue.
+  static fromSnapshot(snapshot: BotSnapshot, dialogueHydrator: DialogueHydrator) {
+    const dialogues = snapshot.dialogues.map(e => dialogueHydrator(e.identifier, e))
+    const bot = new Bot(dialogues[0], dialogueHydrator)
     for(const dialogue of dialogues) {
       bot.pushDialogue(dialogue, false)
     }
+    bot.didStart = snapshot.didStart
     bot.messageLog = snapshot.messageLog
     return bot
   }
 
+  // Returns a snapshot that reflects the current state of the bot.
+  // You can serialize and save this snapshot, then use it later to instantiate a Bot from it.
   get snapshot(): BotSnapshot {
     return {
+      didStart: this.didStart,
       messageLog: this.messageLog,
       dialogues: this.dialogues.map(e => e.snapshot)
     }
   }
 
+  // The active prompt mode, or undefined if the last bot message did not specify a prompt.
   get activePrompt(): Prompt | undefined {
     const lastMessage = this.messageLog[this.messageLog.length - 1]
     if(lastMessage.author === "bot") {
@@ -72,16 +103,28 @@ export class Bot extends EventEmitter {
     }
   }
 
+  private get activeDialogue(): Dialogue<unknown> | undefined {
+    return this.dialogues[this.dialogues.length - 1]
+  }
+
   // Start the root dialogue.
+  // @throws if didStart was already called.
   start() {
-    if(!this.dialogues[0]) {
-      throw new Error("Cannot start because there are no dialogues on the stack.")
+    if(this.didStart) {
+      throw new Error("Cannot start because the bot has already started.")
     }
 
-    this.dialogues[0].start()
+    if(this.activeDialogue) {
+      this.activeDialogue.onStart()
+      this.didStart = true
+    } else {
+      throw new Error("Cannot start because there are no dialogues on the stack.")
+    }
   }
 
   // Send a user response to the bot.
+  // @param body The text body of the response.
+  // @param value The optional value of the response. Will default to the body.
   respond(body: string, value?: unknown) {
     for(const middleware of this.middlewares) {
       if(!middleware.before) {
@@ -103,22 +146,19 @@ export class Bot extends EventEmitter {
 
     this.addMessages([message])
 
-    if(this.dialogues.length === 0) {
-      this.logDebug("Received response but there are no dialogues on the stack.")
-    }
-
-    for(let i = this.dialogues.length - 1; i >= 0; i--) {
-      const dialogue = this.dialogues[i]
-      if(dialogue.onReceiveResponse(value !== undefined ? value : body)) {
-        break
-      }
+    if(this.activeDialogue) {
+      this.activeDialogue.onReceiveResponse(value !== undefined ? value : body)
+    } else {
+      this.logDebug("Received response but there is not active dialogue.")
     }
   }
 
+  // Undoes a user response with the given id.
+  // @param messageId The id of the response message to undo.
   undoResponse(messageId: string) {
-    const index = this.messageLog.findIndex(e => e.id === messageId)
+    const index = this.messageLog.findIndex(e => e.id === messageId && e.author === "user")
     if(index === -1) {
-      throw new Error(`Message with id ${messageId} does not exist in the message log.`)
+      throw new Error(`User message with id ${messageId} does not exist in the message log.`)
     }
 
     // Find the first bot message that preceded the response message
@@ -143,11 +183,13 @@ export class Bot extends EventEmitter {
     this.activeDialogue.rewind(botMessage._meta.rewindData)
   }
 
+  // Pushes a dialogue with the given identifier and starts it.
+  // This will use the `dialogueHydrator` property to hydrate the dialogue.
   pushDialogueWithIdentifier(identifier: string) {
-    if(!this.dialogueFromIdentifier) {
-      throw new Error("`dialogueFromIdentifier` is not implemented.")
+    if(!this.dialogueHydrator) {
+      throw new Error("You pushed or transitioned to a dialogue, but did not provide a `dialogueHydrator`.")
     }
-    const nextDialogue = this.dialogueFromIdentifier(identifier)
+    const nextDialogue = this.dialogueHydrator(identifier)
 
     this.pushDialogue(nextDialogue, true)
   }
@@ -180,7 +222,7 @@ export class Bot extends EventEmitter {
     this.dialogues.push(dialogue)
 
     if(runStartStep) {
-      dialogue.start()
+      dialogue.onStart()
     }
   }
 
@@ -200,11 +242,7 @@ export class Bot extends EventEmitter {
     }
 
     if(result.nextDialogueIdentifier !== undefined) {
-      if(!this.dialogueFromIdentifier) {
-        throw new Error("`dialogueFromIdentifier` is not implemented.")
-      }
-      const nextDialogue = this.dialogueFromIdentifier(result.nextDialogueIdentifier)
-      this.pushDialogue(nextDialogue, true)
+      this.pushDialogueWithIdentifier(result.nextDialogueIdentifier)
     }
   }
 
@@ -260,16 +298,4 @@ export class Bot extends EventEmitter {
       this.interjectMessages([`[${message}]`])
     }
   }
-
-  private get activeDialogue(): Dialogue<unknown> | undefined {
-    return this.dialogues[this.dialogues.length - 1]
-  }
-}
-
-function uuidv4() {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0
-    const v = c === "x" ? r : (r & 0x3 | 0x8)
-    return v.toString(16)
-  })
 }
