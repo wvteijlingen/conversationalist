@@ -1,4 +1,5 @@
 {
+  "name": "conversationalist",
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
