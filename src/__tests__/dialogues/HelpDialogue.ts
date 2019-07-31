@@ -2,14 +2,14 @@ import { DialogueSnapshot } from "../../Dialogue"
 import ScriptedDialogue, { Script, StepResultBuilder } from "../../ScriptedDialogue"
 
 const script: Script<{ }> = {
-  start(response, state) {
+  async start(response, state) {
     return StepResultBuilder.pickerPrompt("Do you need help with something?", this.handle, [
       { body: "Yes", value: true },
       { body: "No", value: false }
     ])
   },
 
-  handle(response, state) {
+  async handle(response, state) {
     if(response === true) {
       return StepResultBuilder.textPrompt(["No worries, I can help you!", "What is the problem?"], this.handleHelpQuery)
     } else {
@@ -17,7 +17,7 @@ const script: Script<{ }> = {
     }
   },
 
-  handleHelpQuery(response, state) {
+  async handleHelpQuery(response, state) {
     return StepResultBuilder.finish(["I cannot help you with that 🙁", "Let's get back to where we left off. As I was saying..."])
   }
 }

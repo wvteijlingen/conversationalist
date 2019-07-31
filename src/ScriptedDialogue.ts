@@ -7,7 +7,7 @@ export interface Script<State> {
   [key: string]: ScriptStep<State> & ThisType<this>
 }
 
-export type ScriptStep<State> = (response: UserResponse, data: State) => ScriptStepResult<State>
+export type ScriptStep<State> = (response: UserResponse, data: State) => Promise<ScriptStepResult<State>>
 
 interface ScriptStepResult<State> extends Omit<StepResult, "rewindData"> {
   emitEvent?: [string, ...any[]]

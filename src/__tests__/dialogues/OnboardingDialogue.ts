@@ -6,7 +6,7 @@ interface State {
 }
 
 const script: Script<State> = {
-  start(response, state) {
+  async start(response, state) {
     return {
       body: ["I’m Oki and I am here to help you get treated better and faster.", "Are you signing up or have you been here before?"],
       prompt: { type: "inlinePicker", choices: [
@@ -17,7 +17,7 @@ const script: Script<State> = {
     }
   },
 
-  handleNewOrExisting(response, state) {
+  async handleNewOrExisting(response, state) {
     if(response === "NEW") {
       return {
         body: ["Welcome! Let’s get you set up!", "What’s your name?"],
@@ -29,7 +29,7 @@ const script: Script<State> = {
     }
   },
 
-  handleUsername(response, state) {
+  async handleUsername(response, state) {
     if(!response || typeof response !== "string") {
       return {
         body: "Please enter your name.",
@@ -46,7 +46,7 @@ const script: Script<State> = {
     }
   },
 
-  promptReferralCode(response, state) {
+  async promptReferralCode(response, state) {
     return {
       body: "Please paste your referral code below - this would’ve been sent to you by your doctor in an email.",
       prompt: { type: "text" },
@@ -54,7 +54,7 @@ const script: Script<State> = {
     }
   },
 
-  handleReferralCode(response, state) {
+  async handleReferralCode(response, state) {
     if(!response) {
       return {
         body: "Please enter the referral code you received from your doctor.",
@@ -72,7 +72,7 @@ const script: Script<State> = {
     }
   },
 
-  handlePostcode(response, state) {
+  async handlePostcode(response, state) {
     if(!response) {
       return {
         body: "Please enter your postcode so we can send you a wearable.",
@@ -86,7 +86,7 @@ const script: Script<State> = {
     }
   },
 
-  promptAddress(response, state) {
+  async promptAddress(response, state) {
     // Fetch possible addresses
     const choices = [
       { body: "First address", value: "First address" },
@@ -100,7 +100,7 @@ const script: Script<State> = {
     }
   },
 
-  handleAddress(response, state) {
+  async handleAddress(response, state) {
     // Save the address somewhere
 
     return {
