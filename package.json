@@ -2,6 +2,14 @@
   "name": "conversationalist",
   "license": "UNLICENSED",
   "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "yarn tsc",
+    "watch": "yarn tsc -w",
+    "start": "yarn build && node build/__test__/run.js",
+    "lint": "yarn tslint --project .",
+    "test": "jest"
+  },
   "dependencies": {
   },
   "devDependencies": {
@@ -12,12 +20,5 @@
     "ts-jest": "^24.0.2",
     "tslint": "^5.18.0",
     "typescript": "^3.5.3"
-  },
-  "scripts": {
-    "build": "yarn tsc",
-    "watch": "yarn tsc -w",
-    "start": "yarn build && node build/__test__/run.js",
-    "lint": "yarn tslint src/**/*.ts{,x}",
-    "test": "jest"
   }
 }
