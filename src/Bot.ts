@@ -98,7 +98,7 @@ export default class Bot extends EventEmitter {
   // The active prompt mode, or undefined if the last bot message did not specify a prompt.
   get activePrompt(): Prompt | undefined {
     const lastMessage = this.messageLog[this.messageLog.length - 1]
-    if(lastMessage.author === "bot") {
+    if(lastMessage && lastMessage.author === "bot") {
       return lastMessage.prompt
     }
   }
@@ -295,7 +295,7 @@ export default class Bot extends EventEmitter {
     }
 
     if(this.debugMode) {
-      this.interjectMessages([`[${message}]`])
+      this.interjectMessages([`[SYSTEM] ${message}`])
     }
   }
 }
