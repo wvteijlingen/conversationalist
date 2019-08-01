@@ -13,6 +13,8 @@ export default interface Dialogue<State> {
   // @param isFinished Whether the dialogue is finished and should be popped of the dialogue stack.
   onStep?: (result: StepResult, isFinished: boolean) => void
 
+  onError?: (error: Error) => void
+
   // Called after the dialogue is pushed to the dialogue stack.
   // You can override this method to send an initial message for example.
   onStart(): void

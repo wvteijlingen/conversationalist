@@ -2,7 +2,7 @@ import { EventEmitter } from "events"
 import Dialogue, { DialogueSnapshot, StepResult, UserResponse } from "./Dialogue"
 import { Choice } from "./Prompts"
 
-export interface Script<State> {
+export interface Script<State = { }> {
   start: ScriptStep<State> & ThisType<this>
   [key: string]: ScriptStep<State> & ThisType<this>
 }
@@ -22,6 +22,7 @@ export default class ScriptedDialogue<State = { }> extends EventEmitter implemen
   readonly identifier: string
   readonly script: Script<State>
   onStep?: (result: StepResult, isFinished: boolean) => void
+  onError?: (error: Error) => void
 
   private state: State
   private nextStep?: ScriptStep<State>
@@ -74,7 +75,14 @@ export default class ScriptedDialogue<State = { }> extends EventEmitter implemen
   }
 
   private async runStep(step: ScriptStep<State>, response: unknown | undefined, state: State) {
-    const internalStepResult = await step.call(this.script, response, state)
+    let internalStepResult
+    try {
+      internalStepResult = await step.call(this.script, response, state)
+    } catch(error) {
+      this.onError && this.onError(error)
+      return
+    }
+
     const stepResult: StepResult = { ...internalStepResult }
 
     if(internalStepResult.nextStep) {
@@ -92,9 +100,7 @@ export default class ScriptedDialogue<State = { }> extends EventEmitter implemen
       this.emit(event, ...args)
     }
 
-    if(this.onStep) {
-      this.onStep(stepResult, this.nextStep === undefined)
-    }
+    this.onStep && this.onStep(stepResult, this.nextStep === undefined)
 
     // Go to the next step immediately if there is a next step and no prompt
     if(this.nextStep && !internalStepResult.prompt) {

@@ -1,5 +1,5 @@
-import { DialogueSnapshot } from "../../Dialogue"
-import ScriptedDialogue, { Script } from "../../ScriptedDialogue"
+import { DialogueSnapshot } from "../../../Dialogue"
+import ScriptedDialogue, { Script } from "../../../ScriptedDialogue"
 
 interface State {
   username?: string

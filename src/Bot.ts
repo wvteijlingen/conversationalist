@@ -1,6 +1,6 @@
-import { EventEmitter } from "events"
 import Dialogue, { DialogueSnapshot, StepResult } from "./Dialogue"
 import Prompt from "./Prompts"
+import { TypedEvent } from "./TypedEvent"
 import { uuidv4 } from "./utils"
 
 // A message sent by the bot.
@@ -34,8 +34,8 @@ export interface Middleware {
   // to subsequent middleware and dialogues.
   before?: (body: string, value: unknown | undefined, bot: Bot) => boolean
 
-  // Called after the active dialogue returned its step result, but before the result
-  // is processed by the bot.
+  // Called after the active dialogue returned a step result, but before the result
+  // is processed by the bot. This is not called if an error occurs in a dialogue.
   after?: (stepResult: StepResult, bot: Bot) => void
 }
 
@@ -47,7 +47,7 @@ interface BotSnapshot {
 
 export type DialogueHydrator = (dialogueIdentifier: string, snapshot?: DialogueSnapshot<any>) => Dialogue<any>
 
-export default class Bot extends EventEmitter {
+export default class Bot {
   // All messages that were sent or received by this bot.
   messageLog: Message[] = []
 
@@ -60,6 +60,18 @@ export default class Bot extends EventEmitter {
   // Whether to output debug messages as chat messages.
   debugMode = false
 
+  // All events that can be emitted by a Bot.
+  events = {
+    // Emitted when one or more messages have been added tot the messageLog.
+    messagesAdded: new TypedEvent<Message[]>(),
+
+    // Emitted when the message log has been changed.
+    messagesChanged: new TypedEvent<void>(),
+
+    // Emitted when an error occured in a dialogue.
+    dialogueError: new TypedEvent<Error>()
+  }
+
   private dialogues: Array<Dialogue<unknown>> = []
   private middlewares: Middleware[] = []
   private didStart = false
@@ -67,7 +79,6 @@ export default class Bot extends EventEmitter {
   // Instantiate a new Bot with the given root dialogue and dialogue hydrator.
   // This does not automatically start the root dialogue.
   constructor(rootDialogue: Dialogue<any>, dialogueHydrator?: DialogueHydrator) {
-    super()
     this.dialogueHydrator = dialogueHydrator
     this.pushDialogue(rootDialogue, false)
   }
@@ -181,6 +192,7 @@ export default class Bot extends EventEmitter {
     this.logDebug(`Undid response ${messageId}`)
     this.messageLog = this.messageLog.slice(0, index)
     this.activeDialogue.rewind(botMessage._meta.rewindData)
+    this.events.messagesChanged.emit()
   }
 
   // Pushes a dialogue with the given identifier and starts it.
@@ -219,6 +231,7 @@ export default class Bot extends EventEmitter {
 
     this.activeDialogue && this.activeDialogue.onInterrupt()
     dialogue.onStep = (result, isFinished) => this.onDialogueStep(dialogue, result, isFinished)
+    dialogue.onError = error => this.onDialogueError(dialogue, error)
     this.dialogues.push(dialogue)
 
     if(runStartStep) {
@@ -246,9 +259,18 @@ export default class Bot extends EventEmitter {
     }
   }
 
+  private onDialogueError(dialogue: Dialogue<unknown>, error: Error) {
+    this.events.dialogueError.emit(error)
+  }
+
   private addMessages(messages: Message[]) {
+    if(messages.length === 0) {
+      return
+    }
+
     this.messageLog = [...this.messageLog, ...messages]
-    this.emit("messagesAdded", messages)
+    this.events.messagesAdded.emit(messages)
+    this.events.messagesChanged.emit()
   }
 
   private removeDialogue<State>(dialogue: Dialogue<State>) {
@@ -271,7 +293,7 @@ export default class Bot extends EventEmitter {
   }
 
   private messagesFromStepResult(result: StepResult, dialogueIdentifier: string): BotMessage[] {
-    if(result.body === "undefined") {
+    if(!result.body) {
       return []
     }
 

@@ -1,5 +1,5 @@
-import { DialogueSnapshot } from "../../Dialogue"
-import ScriptedDialogue, { Script, StepResultBuilder } from "../../ScriptedDialogue"
+import { DialogueSnapshot } from "../../../Dialogue"
+import ScriptedDialogue, { Script, StepResultBuilder } from "../../../ScriptedDialogue"
 
 const script: Script<{ }> = {
   async start(response, state) {

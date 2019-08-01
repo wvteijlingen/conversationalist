@@ -2,8 +2,8 @@ import { prompt } from "enquirer"
 import fs from "fs"
 import Bot, { DialogueHydrator, Message, Middleware } from "../Bot"
 import Prompt from "../Prompts"
-import HelpDialogue from "./dialogues/HelpDialogue"
-import OnboardingDialogue from "./dialogues/OnboardingDialogue"
+import HelpDialogue from "./__mocks__/dialogues/HelpDialogue"
+import OnboardingDialogue from "./__mocks__/dialogues/OnboardingDialogue"
 
 const hydrator: DialogueHydrator = (identifier, snapshot) => {
   switch(identifier) {
@@ -76,7 +76,6 @@ async function onMessagesAdded(messages: Message[]) {
 
   } else {
     showPrompt(message.prompt, message.id, message.body)
-
   }
 }
 
@@ -105,9 +104,13 @@ const CommandMiddleware: Middleware = {
   }
 }
 
-chatBot.on("messagesAdded", onMessagesAdded)
+chatBot.events.messagesAdded.on(onMessagesAdded)
 chatBot.use(HelpMiddleware)
 chatBot.use(CommandMiddleware)
+
+chatBot.events.dialogueError.on(error => {
+  chatBot.interjectMessages(["Whoops, something went wrong 😟", error.stack || error.message])
+})
 
 if(process.argv[2]) {
   if(chatBot.activePrompt) {
