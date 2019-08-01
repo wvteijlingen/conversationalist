@@ -1,9 +1,16 @@
 import { prompt } from "enquirer"
 import fs from "fs"
+import ora from "ora"
 import Bot, { DialogueHydrator, Message, Middleware } from "../Bot"
 import Prompt from "../Prompts"
 import HelpDialogue from "./__mocks__/dialogues/HelpDialogue"
 import OnboardingDialogue from "./__mocks__/dialogues/OnboardingDialogue"
+
+function wait(delay: number) {
+  return new Promise(function(resolve) {
+    setTimeout(resolve, delay)
+  })
+}
 
 const hydrator: DialogueHydrator = (identifier, snapshot) => {
   switch(identifier) {
@@ -15,15 +22,13 @@ const hydrator: DialogueHydrator = (identifier, snapshot) => {
 }
 
 let chatBot: Bot
-
 if(process.argv[2]) {
   const snapshot = JSON.parse(fs.readFileSync(process.argv[2]).toString())
   chatBot = Bot.fromSnapshot(snapshot, hydrator)
 } else {
   chatBot = new Bot(new OnboardingDialogue(), hydrator)
 }
-
-chatBot.debugMode = true
+// chatBot.debugMode = true
 
 async function showPrompt(p: Prompt, id: string, body: string) {
   if(p.type === "text") {
@@ -57,25 +62,39 @@ async function showPrompt(p: Prompt, id: string, body: string) {
   }
 }
 
-async function onMessagesAdded(messages: Message[]) {
-  // Save state
-  const snapshot = chatBot.snapshot
-  fs.writeFileSync("./BotState.json", JSON.stringify(snapshot, null, 2))
-
-  const message = messages[messages.length - 1]
-
-  if(message.author === "user") {
-    // tslint:disable-next-line: no-console
-    console.log(`  👱‍   ${message.id}   ${message.body}`)
-    return
+const loader: any = ora({
+  text: "Typing…",
+  spinner: {
+    interval: 200,
+    frames: [
+      "  .   ",
+      "  ..  ",
+      "  ... ",
+      "   .. ",
+      "    . ",
+      "      "
+    ]
   }
+})
+async function onMessagesAdded(messages: Message[]) {
+  for(const message of messages) {
+    if(message.author === "user") {
+      // tslint:disable-next-line: no-console
+      console.log(`  👱‍   ${message.id}   ${message.body}`)
+      return
+    }
 
-  if(message.prompt === undefined) {
-    // tslint:disable-next-line: no-console
-    console.log(`  🤖   ${message.id}   ${message.body}`)
+    loader.start()
+    await wait(2000)
+    loader.stop()
 
-  } else {
-    showPrompt(message.prompt, message.id, message.body)
+    if(message.prompt === undefined) {
+      // tslint:disable-next-line: no-console
+      console.log(`  🤖   ${message.id}   ${message.body}`)
+
+    } else {
+      showPrompt(message.prompt, message.id, message.body)
+    }
   }
 }
 
