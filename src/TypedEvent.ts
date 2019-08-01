@@ -33,8 +33,9 @@ export class TypedEvent<T> {
 
     /** Clear the `once` queue */
     if(this.listenersOncer.length > 0) {
-      this.listenersOncer.forEach(listener => listener(event))
+      const listenersOncer = this.listenersOncer
       this.listenersOncer = []
+      listenersOncer.forEach(listener => listener(event))
     }
   }
 

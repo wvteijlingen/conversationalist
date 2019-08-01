@@ -1,5 +1,9 @@
 import { Bot, Script, ScriptedDialogue } from ".."
 
+const EMPTY_DIALOGUE: Script = {
+  async start() { return { } }
+}
+
 describe("A bot that receives a response", () => {
   it("passes the response value to the active dialogue", done => {
     const dialogue: Script = {
@@ -11,15 +15,15 @@ describe("A bot that receives a response", () => {
         }
       },
       async handler(result) {
-        expect(result).toBe("Response value")
+        expect(result).toBe("Value")
         done()
         return { }
       }
     }
 
     const chatBot = new Bot(new ScriptedDialogue("test", dialogue))
-    chatBot.once("messagesAdded", messages => {
-      chatBot.respond("Response body", "Response value")
+    chatBot.events.messagesAdded.once(messages => {
+      chatBot.respond("Body", "Value")
     })
     chatBot.start()
   })
@@ -34,112 +38,119 @@ describe("A bot that receives a response", () => {
         }
       },
       async handler(result) {
-        expect(result).toBe("Response body")
+        expect(result).toBe("Body")
         done()
         return { }
       }
     }
 
     const chatBot = new Bot(new ScriptedDialogue("test", dialogue))
-    chatBot.once("messagesAdded", messages => {
-      chatBot.respond("Response body")
+    chatBot.events.messagesAdded.once(messages => {
+      chatBot.respond("Body")
     })
     chatBot.start()
   })
 
   it("emits a messagesAdded event", done => {
-    const dialogue: Script = {
-      async start() {
-        return { }
-      }
-    }
-
-    const chatBot = new Bot(new ScriptedDialogue("test", dialogue))
+    const chatBot = new Bot(new ScriptedDialogue("test", EMPTY_DIALOGUE))
     chatBot.events.messagesAdded.on(messages => {
       expect(messages.length).toBe(1)
-      const message = messages[0]
-
-      expect(typeof message.id).toBe("string")
-      expect(message.author).toBe("user")
-      expect(message.creationDate).toBeInstanceOf(Date)
-      expect(message.body).toBe("Response body")
-
-      if(message.author !== "user") {
-        fail()
-      }
-
+      expect(messages[0].body).toBe("Body")
       done()
     })
     chatBot.start()
-    chatBot.respond("Response body", "Response value")
+    chatBot.respond("Body", "Value")
+  })
+
+  it("emits a messagesChanged event", done => {
+    const chatBot = new Bot(new ScriptedDialogue("test", EMPTY_DIALOGUE))
+    chatBot.start()
+    chatBot.events.messagesChanged.on(done)
+    chatBot.respond("Body", "Value")
   })
 })
 
-describe("Sending bot messages", () => {
-  it("emits a messagesAdded event", done => {
-    const dialogue: Script = {
-      async start() {
-        return { body: "Test message" }
-      }
+describe("A bot that sends a message", () => {
+  const dialogue: Script = {
+    async start() {
+      return { body: "Body" }
     }
+  }
 
+  it("emits a messagesAdded event", done => {
     const chatBot = new Bot(new ScriptedDialogue("test", dialogue))
     chatBot.events.messagesAdded.on(messages => {
       expect(messages.length).toBe(1)
-      const message = messages[0]
-      expect(typeof message.id).toBe("string")
-      expect(message.author).toBe("bot")
-      expect(message.creationDate).toBeInstanceOf(Date)
-      expect(message.body).toBe("Test message")
+      expect(messages[0].body).toBe("Body")
       done()
     })
+    chatBot.start()
+  })
+
+  it("emits a messagesChanged event", done => {
+    const chatBot = new Bot(new ScriptedDialogue("test", dialogue))
+    chatBot.events.messagesChanged.on(done)
     chatBot.start()
   })
 
   it("appends the message to the messageLog", done => {
-    const dialogue: Script = {
-      async start() {
-        return { body: "Test message" }
-      }
-    }
-
     const chatBot = new Bot(new ScriptedDialogue("test", dialogue))
-    expect(chatBot.messageLog.length).toBe(0)
-
     chatBot.events.messagesAdded.on(messages => {
       expect(chatBot.messageLog.length).toBe(1)
-      const message = messages[0]
-      expect(typeof message.id).toBe("string")
-      expect(message.author).toBe("bot")
-      expect(message.creationDate).toBeInstanceOf(Date)
-      expect(message.body).toBe("Test message")
+      expect(messages[0].body).toBe("Body")
       done()
     })
     chatBot.start()
   })
 })
 
-describe("Interjecting messages", () => {
-  it("emits a messagesAdded event when a message is interjected", done => {
-    const dialogue: Script = {
-      async start() {
-        return { }
-      }
-    }
-
-    const chatBot = new Bot(new ScriptedDialogue("test", dialogue))
+describe("A bot that interjects a message", () => {
+  it("emits a messagesAdded event", done => {
+    const chatBot = new Bot(new ScriptedDialogue("test", EMPTY_DIALOGUE))
     chatBot.start()
     chatBot.events.messagesAdded.on(messages => {
       expect(messages.length).toBe(1)
-      const message = messages[0]
-
-      expect(typeof message.id).toBe("string")
-      expect(message.author).toBe("bot")
-      expect(message.creationDate).toBeInstanceOf(Date)
-      expect(message.body).toBe("Interjected message")
+      expect(messages[0].body).toBe("Interjected message")
       done()
     })
 
     chatBot.interjectMessages(["Interjected message"])
+  })
+
+  it("emits a messagesChanged", done => {
+    const chatBot = new Bot(new ScriptedDialogue("test", EMPTY_DIALOGUE))
+    chatBot.start()
+    chatBot.events.messagesChanged.on(done)
+    chatBot.interjectMessages(["Interjected message"])
+  })
+
+  it("appends the message to the messageLog", done => {
+    const chatBot = new Bot(new ScriptedDialogue("test", EMPTY_DIALOGUE))
+    chatBot.start()
+    chatBot.events.messagesAdded.on(messages => {
+      expect(chatBot.messageLog.length).toBe(1)
+      expect(messages[0].body).toBe("Interjected message")
+      done()
+    })
+
+    chatBot.interjectMessages(["Interjected message"])
+  })
+})
+
+describe("A bot that sends a prompt", () => {
+  const prompt = { type: "text" } as const
+  const dialogue: Script = {
+    async start() {
+      return { body: "Specify response", prompt }
+    }
+  }
+
+  it("updates the activePrompt property", done => {
+    const chatBot = new Bot(new ScriptedDialogue("test", dialogue))
+    chatBot.events.messagesAdded.once(messages => {
+      expect(chatBot.activePrompt).toMatchObject(prompt)
+      done()
+    })
+    chatBot.start()
   })
 })
