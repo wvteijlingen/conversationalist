@@ -1,16 +1,28 @@
-import { EventEmitter } from "events"
 import Dialogue, { DialogueSnapshot, StepResult, UserResponse } from "./Dialogue"
-import { Choice } from "./Prompts"
 
-export interface Script<State = { }> {
+/**
+ * A script that can be executed by a ScriptedDialogue.
+ * Its `start` function will be called as soon as the dialogue becomes active.
+ */
+export interface Script<State = {}> {
   start: ScriptStep<State> & ThisType<this>
   [key: string]: ScriptStep<State> & ThisType<this>
 }
 
-export type ScriptStep<State> = (response: UserResponse, data: State) => Promise<ScriptStepResult<State>>
+/**
+ * A step in a dialogue script.
+ * This will usually be called in response to receiving a user response.
+ *
+ * @param response The response that triggered this step.
+ * @param state The current dialogue state. This can be directly mutated.
+ */
+export type ScriptStep<State> = (response: UserResponse, state: State) => Promise<ScriptStepResult<State>>
 
 interface ScriptStepResult<State> extends Omit<StepResult, "rewindData"> {
-  emitEvent?: [string, ...any[]]
+  /**
+   * The step to be called when receiving the next user response.
+   * If this step result does not contain a prompt, the next step will be called immediately after the current step.
+   */
   nextStep?: ScriptStep<State>
 }
 
@@ -18,29 +30,38 @@ interface ScriptedDialogueSnapshot<State> extends DialogueSnapshot<State> {
   nextStepName?: string
 }
 
-export default class ScriptedDialogue<State = { }> extends EventEmitter implements Dialogue<State> {
+/**
+ * A dialogue that runs by executing a script. Each step in the script is called when a user response is received.
+ */
+export default class ScriptedDialogue<State = {}> implements Dialogue<State> {
   readonly identifier: string
   readonly script: Script<State>
+  onStepStart?: () => void
   onStep?: (result: StepResult, isFinished: boolean) => void
   onError?: (error: Error) => void
 
-  private state: State
-  private nextStep?: ScriptStep<State>
+  protected state: State
+  protected nextStep?: ScriptStep<State>
 
-  // @param dialogue The dialogue to run.
-  // @param initialState The intial state to start the dialogue with.
-  // @param snapshot Optional dialogue snapshot for resuming the dialogue.
-  constructor(identifier: string, script: Script<State>, initialState?: State, snapshot?: ScriptedDialogueSnapshot<State>) {
-    super()
+  /**
+   *
+   * @param identifier The identifier of this dialogue.
+   * @param script The script to run.
+   * @param state The intial state to start the dialogue with.
+   * @param snapshot Optional dialogue snapshot for resuming the dialogue.
+   */
+  constructor(identifier: string, script: Script<State>, state: State, snapshot?: ScriptedDialogueSnapshot<State>) {
     this.identifier = identifier
     this.script = script
-    this.state = initialState || { } as State
-    if (snapshot && snapshot.nextStepName) {
-      this.nextStep = script[snapshot.nextStepName]
+    this.state = state
+
+    if(snapshot) {
+      this.nextStep = snapshot.nextStepName ? script[snapshot.nextStepName] : undefined
+      this.state = snapshot.state
     }
   }
 
-  get snapshot(): ScriptedDialogueSnapshot<State> {
+  get snapshot(): ScriptedDialogueSnapshot<State> | undefined {
     return {
       identifier: this.identifier,
       state: this.state,
@@ -62,106 +83,37 @@ export default class ScriptedDialogue<State = { }> extends EventEmitter implemen
     }
   }
 
-  onInterrupt() {
-    //
-  }
+  /**
+   * Runs the given script step, and passes the step result back to the Bot.
+   * @param step The script step to run.
+   * @param response The user response that triggered the next step.
+   * @param state The dialogue state to pass to the script step.
+   */
+  protected runStep(step: ScriptStep<State>, response: unknown | undefined, state: State) {
+    this.onStepStart && this.onStepStart()
 
-  onResume() {
-    //
-  }
+    step.call(this.script, response, state).then(internalStepResult => {
+      const stepResult: StepResult = { ...internalStepResult }
 
-  onFinish() {
-    this.emit("finish", this.state)
-  }
+      if(internalStepResult.nextStep) {
+        this.nextStep = internalStepResult.nextStep
+      } else {
+        this.nextStep = undefined
+      }
 
-  private async runStep(step: ScriptStep<State>, response: unknown | undefined, state: State) {
-    let internalStepResult
-    try {
-      internalStepResult = await step.call(this.script, response, state)
-    } catch(error) {
+      if(internalStepResult.prompt && internalStepResult.prompt.isUndoAble !== false && internalStepResult.nextStep) {
+        stepResult.rewindData = { nextStepName: internalStepResult.nextStep.name }
+      }
+
+      this.onStep && this.onStep(stepResult, this.nextStep === undefined)
+
+      // Go to the next step immediately if there is a next step and no prompt
+      if(this.nextStep && !internalStepResult.prompt) {
+        this.runStep(this.nextStep, undefined, this.state)
+      }
+    }, error => {
       this.onError && this.onError(error)
       return
-    }
-
-    const stepResult: StepResult = { ...internalStepResult }
-
-    if(internalStepResult.nextStep) {
-      this.nextStep = internalStepResult.nextStep
-    } else {
-      this.nextStep = undefined
-    }
-
-    if(internalStepResult.prompt && internalStepResult.nextStep) {
-      stepResult.rewindData = { nextStepName: internalStepResult.nextStep.name }
-    }
-
-    if(internalStepResult.emitEvent) {
-      const [event, ...args] = internalStepResult.emitEvent
-      this.emit(event, ...args)
-    }
-
-    this.onStep && this.onStep(stepResult, this.nextStep === undefined)
-
-    // Go to the next step immediately if there is a next step and no prompt
-    if(this.nextStep && !internalStepResult.prompt) {
-      this.runStep(this.nextStep, undefined, this.state)
-    }
-  }
-}
-
-export const StepResultBuilder = {
-  next: <S>(nextStep?: ScriptStep<S>): ScriptStepResult<S> => {
-    return {
-      nextStep
-    }
-  },
-  message: <S>(messages: string | string[], nextStep: ScriptStep<S>): ScriptStepResult<S> => {
-    return {
-      body: messages,
-      nextStep
-    }
-  },
-  textPrompt: <S>(messages: string | string[], nextStep: ScriptStep<S>): ScriptStepResult<S> => {
-    return {
-      body: messages,
-      prompt: { type: "text" },
-      nextStep
-    }
-  },
-  sliderPrompt: <S>(messages: string | string[], nextStep: ScriptStep<S>): ScriptStepResult<S> => {
-    return {
-      body: messages,
-      prompt: { type: "slider" },
-      nextStep
-    }
-  },
-  inlinePickerPrompt: <S>(messages: string | string[], nextStep: ScriptStep<S>, choices: Choice[]): ScriptStepResult<S> => {
-    return {
-      body: messages,
-      prompt: { type: "inlinePicker", choices },
-      nextStep
-    }
-  },
-  pickerPrompt: <S>(messages: string | string[], nextStep: ScriptStep<S>, choices: Choice[]): ScriptStepResult<S> => {
-    return {
-      body: messages,
-      prompt: { type: "picker", choices },
-      nextStep
-    }
-  },
-  nextStep: <S>(nextStep: ScriptStep<S>): ScriptStepResult<S> => {
-    return {
-      nextStep
-    }
-  },
-  finish: <S>(messages: string | string[]): ScriptStepResult<S> => {
-    return {
-      body: messages
-    }
-  },
-  dialogue: <S>(dialogueIdentifier: string): ScriptStepResult<S> => {
-    return {
-      nextDialogueIdentifier: dialogueIdentifier
-    }
+    })
   }
 }

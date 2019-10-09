@@ -4,10 +4,10 @@
   "private": true,
   "main": "src/index.ts",
   "scripts": {
-    "build": "yarn tsc",
-    "watch": "yarn tsc -w",
-    "start": "yarn build && node build/__test__/run.js",
-    "lint": "yarn tslint --project .",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "start": "build && node build/__test__/run.js",
+    "lint": "tslint --project .",
     "test": "jest"
   },
   "dependencies": {},

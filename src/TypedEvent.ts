@@ -2,7 +2,7 @@
 
 type Listener<T> = (event: T) => any
 
-interface Disposable {
+export interface Disposable {
   dispose(): void
 }
 
