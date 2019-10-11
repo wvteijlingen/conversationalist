@@ -48,21 +48,10 @@ interface InlinePickerPrompt extends PromptBase {
   choices: Choice[]
 }
 
-/**
- * A prompt that prompts the user to connect the watch accessory.
- */
-interface ConnectWatchPrompt extends PromptBase {
-  type: "connectWatch",
-  successValue: unknown
+interface CustomPrompt extends PromptBase {
+  customType: string
 }
 
-/**
- * A prompt that displays a picker to so the user can select an emotion.
- */
-interface EmotionPickerPrompt extends PromptBase {
-  type: "emotionPicker"
-}
-
-type Prompt = TextPrompt | SliderPrompt | PickerPrompt | InlinePickerPrompt | ConnectWatchPrompt | EmotionPickerPrompt
+type Prompt = TextPrompt | SliderPrompt | PickerPrompt | InlinePickerPrompt | CustomPrompt
 
 export default Prompt

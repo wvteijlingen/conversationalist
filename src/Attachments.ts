@@ -1,11 +1,12 @@
-export interface ProgressGraphAttachment {
-  type: "progressGraph",
-  name: string
-  minValue: number
-  maxValue: number
-  neutralValue: number
-  data: any
+export interface ImageAttachment {
+  type: "image"
+  src: string
 }
 
-type Attachment = ProgressGraphAttachment
+interface CustomAttachment {
+  customType: string
+}
+
+type Attachment = ImageAttachment | CustomAttachment
+
 export default Attachment

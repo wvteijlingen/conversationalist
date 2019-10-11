@@ -1,5 +1,5 @@
 import Bot from "./Bot"
-import { StepResult } from "./Dialogue"
+import { DialogueOutput } from "./Dialogue"
 
 export interface Middleware {
   /**
@@ -10,8 +10,8 @@ export interface Middleware {
   before?: (body: string | undefined, value: unknown, bot: Bot) => boolean
 
   /**
-   * Called after the active dialogue returned a step result, but before the result
-   * is processed by the bot. This is not called if an error occurs in a dialogue.
+   * Called after the active dialogue emitted output, but before the output is processed by the bot.
+   * This is not called if an error occurs in a dialogue.
    */
-  after?: (stepResult: StepResult, bot: Bot) => void
+  after?: (output: DialogueOutput, bot: Bot) => void
 }

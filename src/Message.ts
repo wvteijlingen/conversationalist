@@ -1,5 +1,5 @@
-import Prompt from "./Prompts"
 import Attachment from "./Attachments"
+import Prompt from "./Prompts"
 
 /**
  * A message sent by the bot.

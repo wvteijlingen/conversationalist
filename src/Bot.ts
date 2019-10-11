@@ -1,23 +1,9 @@
-import Dialogue, { DialogueSnapshot, StepResult } from "./Dialogue"
+import Dialogue, { DialogueOutput, DialogueSnapshot } from "./Dialogue"
 import { BotMessage, Message, UserMessage } from "./Message"
+import { Middleware } from "./Middleware"
 import Prompt from "./Prompts"
 import { TypedEvent } from "./TypedEvent"
 import { uuidv4 } from "./utils"
-
-export interface Middleware {
-  /**
-   * Called after a response is received by the bot, but before it is dispatched to the active dialogue.
-   * If you return false, processing is halted and the response will not be passed
-   * to subsequent middleware and dialogues.
-   */
-  before?: (body: string | undefined, value: unknown, bot: Bot) => boolean
-
-  /**
-   * Called after the active dialogue returned a step result, but before the result
-   * is processed by the bot. This is not called if an error occurs in a dialogue.
-   */
-  after?: (stepResult: StepResult, bot: Bot) => void
-}
 
 export interface BotSnapshot {
   version: number
@@ -78,7 +64,7 @@ export default class Bot {
   private didStart = false
   private _isActive = false
 
-  /** Whether the bot is currently processing a step. */
+  /** Whether the bot is currently processing. */
   get isActive(): boolean {
     return this._isActive
   }
@@ -193,16 +179,17 @@ export default class Bot {
     }
 
     if(this.activeDialogue) {
-      this.logDebug(`Handling response "${body}" <${value}> by dialogue "${this.activeDialogue.identifier}"`)
+      this.logDebug(`Handling input "${body}" <${value}> by dialogue "${this.activeDialogue.identifier}"`)
       try {
-        this.activeDialogue.onReceiveResponse(value !== undefined ? value : body)
+        this.activeDialogue.onReceiveInput(value !== undefined ? value : body)
       } catch(error) {
         this.events.dialogueError.emit(error)
       }
     } else {
-      this.logDebug(`Received response "${body}" <${value}> but there is not active dialogue.`)
+      this.logDebug(`Received input "${body}" <${value}> but there is not active dialogue.`)
     }
   }
+
   /**
    * Undoes a user response with the given id.
    * @param messageId The id of the response message to undo.
@@ -228,6 +215,10 @@ export default class Bot {
 
     if(this.activeDialogue === undefined || botMessage._meta.dialogueIdentifier !== this.activeDialogue.identifier) {
       throw new Error("Cannot undo a response that was given outside of the active dialogue.")
+    }
+
+    if(!this.activeDialogue?.rewind) {
+      throw new Error(`Cannot undo a response for active dialogue because the dialogue does not implement the "rewind" method.`)
     }
 
     this.logDebug(`Undid response ${messageId}`)
@@ -297,11 +288,11 @@ export default class Bot {
   }
 
   /**
-   * Push the given dialogue to the dialogue stack, optionally running it.
+   * Push the given dialogue to the dialogue stack, optionally starting it.
    * @param dialogue The dialogue to push.
-   * @param runStartStep Whether to start it.
+   * @param start Whether to start it.
    */
-  private pushDialogue(dialogue: Dialogue<unknown>, runStartStep: boolean = true) {
+  private pushDialogue(dialogue: Dialogue<unknown>, start: boolean = true) {
     this.logDebug(`Pushing dialogue: ${dialogue.identifier}`)
 
     try {
@@ -310,13 +301,13 @@ export default class Bot {
       this.events.dialogueError.emit(error)
     }
 
-    dialogue.onStepStart = () => this.onDialogueStepStart(dialogue)
-    dialogue.onStep = (result, isFinished) => this.onDialogueStepEnd(dialogue, result, isFinished)
-    dialogue.onError = error => this.onDialogueError(dialogue, error)
+    dialogue.events.outputStart = () => this.handleDialogueOutputStart(dialogue)
+    dialogue.events.output = (output, isFinished) => this.handleDialogueOutput(dialogue, output, isFinished)
+    dialogue.events.error = error => this.handleDialogueError(dialogue, error)
 
     this.dialogues.push(dialogue)
 
-    if(runStartStep) {
+    if(start) {
       try {
         dialogue.onStart()
       } catch(error) {
@@ -327,18 +318,18 @@ export default class Bot {
     this.events.dialoguePushed.emit(dialogue)
   }
 
-  private onDialogueStepStart(dialogue: Dialogue<unknown>) {
+  private handleDialogueOutputStart(dialogue: Dialogue<unknown>) {
     if(dialogue !== this.activeDialogue) {
-      this.logDebug(`An inactive dialogue emitted an onStepStart event. This is not supported, the event will be discarded. Dialogue: ${dialogue}`)
+      this.logDebug(`An inactive dialogue emitted an outputStart event. This is not supported, the event will be discarded. Dialogue: ${dialogue.identifier}`)
       return
     }
 
     this.setIsActive(true)
   }
 
-  private onDialogueStepEnd(dialogue: Dialogue<unknown>, result: StepResult, isFinished: boolean) {
+  private handleDialogueOutput(dialogue: Dialogue<unknown>, output: DialogueOutput, isFinished: boolean) {
     if(dialogue !== this.activeDialogue) {
-      this.logDebug(`An inactive dialogue emitted an onStep event. This is not supported, the event will be discarded. Dialogue: ${dialogue}`)
+      this.logDebug(`An inactive dialogue emitted an output event. This is not supported, the event will be discarded. Dialogue: ${dialogue.identifier}`)
       return
     }
 
@@ -348,7 +339,7 @@ export default class Bot {
       if(!middleware.after) {
         continue
       }
-      middleware.after(result, this)
+      middleware.after(output, this)
     }
 
     if(isFinished) {
@@ -361,15 +352,15 @@ export default class Bot {
       this.removeDialogue(dialogue)
     }
 
-    const messages = this.messagesFromStepResult(result, dialogue.identifier)
+    const messages = this.buildMessagesFromDialogueOutput(output, dialogue.identifier)
     this.addMessages(messages)
 
-    if(result.nextDialogue !== undefined) {
-      this.pushDialogue(result.nextDialogue, true)
+    if(output.nextDialogue !== undefined) {
+      this.pushDialogue(output.nextDialogue, true)
     }
   }
 
-  private onDialogueError(dialogue: Dialogue<unknown>, error: Error) {
+  private handleDialogueError(dialogue: Dialogue<unknown>, error: Error) {
     if(dialogue === this.activeDialogue) {
       this.setIsActive(false)
     }
@@ -387,7 +378,7 @@ export default class Bot {
   }
 
   private removeDialogue<State>(dialogue: Dialogue<State>) {
-    dialogue.onStep = undefined
+    dialogue.events = { }
     this.dialogues = this.dialogues.filter(e => e !== dialogue)
 
     // Find the last prompts of the dialogue and set `isUndoAble` to false
@@ -422,22 +413,22 @@ export default class Bot {
     this.logDebug(`Removed dialogue: ${dialogue.identifier}`)
   }
 
-  private messagesFromStepResult(result: StepResult, dialogueIdentifier: string): BotMessage[] {
-    if(!result.body) {
+  private buildMessagesFromDialogueOutput(output: DialogueOutput, dialogueIdentifier: string): BotMessage[] {
+    if(!output.body) {
       return []
     }
 
-    const bodies = Array.isArray(result.body) ? result.body : [result.body]
+    const bodies = Array.isArray(output.body) ? output.body : [output.body]
     return bodies.map((body, index, array) => ({
       id: uuidv4(),
       author: "bot",
       creationDate: new Date(),
       body: typeof body === "string" ? body : undefined,
       attachment: typeof body !== "string" ? body : undefined,
-      prompt: index === array.length - 1 ? result.prompt : undefined,
+      prompt: index === array.length - 1 ? output.prompt : undefined,
       _meta: {
         dialogueIdentifier,
-        rewindData: result.rewindData
+        rewindData: output.rewindData
       }
     } as BotMessage))
   }
