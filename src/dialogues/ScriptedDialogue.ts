@@ -46,7 +46,9 @@ interface Snapshot<State> extends DialogueSnapshot<State> {
  * A dialogue that runs by executing a script. The next step in the script is called when user input is received.
  */
 export default abstract class ScriptedDialogue<State = { }> implements Dialogue<State> {
+  protected enableSnapshots = true
   abstract readonly identifier: string
+  protected looping = false
   script: Script<State> = {
     async start() {
       throw new Error(`You must override the "script" member field.`)
@@ -55,7 +57,6 @@ export default abstract class ScriptedDialogue<State = { }> implements Dialogue<
 
   protected state: State
   protected nextStep?: Step<State>
-  protected enableSnapshots = true
   events: DialogueEvents = { }
 
   constructor(params: { state: State, snapshot?: never } | { state?: never, snapshot: Snapshot<State> }) {
@@ -98,6 +99,12 @@ export default abstract class ScriptedDialogue<State = { }> implements Dialogue<
   onReceiveInput(response?: unknown) {
     if(this.nextStep) {
       this.runStep(this.nextStep, response)
+    }
+  }
+
+  onResume() {
+    if(this.looping && this.nextStep) {
+      this.runStep(this.nextStep)
     }
   }
 
@@ -146,7 +153,7 @@ export default abstract class ScriptedDialogue<State = { }> implements Dialogue<
     if(stepOutput.nextStep) {
       this.nextStep = stepOutput.nextStep
     } else {
-      this.nextStep = undefined
+      this.nextStep = this.looping ? this.script.start : undefined
     }
 
     const dialogueOutput = this.buildDialogueOutput(stepOutput)
@@ -189,9 +196,3 @@ export class InvalidInputError extends Error {
     this.name = "InvalidInputError"
   }
 }
-
-// export function validateInput(validator: (input: DialogueInput) => boolean, input: DialogueInput, errorMessage: string) {
-//   if(!validator(input)) {
-//     throw new InvalidInputError(errorMessage)
-//   }
-// }

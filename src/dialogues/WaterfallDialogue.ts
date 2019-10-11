@@ -18,7 +18,6 @@ export default abstract class WaterfallDialogue<State = {}> implements Dialogue<
 
   protected state: State
   protected nextStepIndex?: number = 0
-  protected nextDialogue?: Dialogue<unknown>
 
   constructor(params: { state: State, snapshot?: never } | { state?: never, snapshot: Snapshot<State> }) {
     if(params.state) {
@@ -48,7 +47,7 @@ export default abstract class WaterfallDialogue<State = {}> implements Dialogue<
     if(this.steps[0]) {
       this.runStepAtIndex(0)
     } else {
-      this.events.output?.({ nextDialogue: this.nextDialogue }, true)
+      this.events.output?.({}, true)
     }
   }
 
@@ -56,9 +55,7 @@ export default abstract class WaterfallDialogue<State = {}> implements Dialogue<
     if(this.nextStepIndex !== undefined) {
       this.runStepAtIndex(this.nextStepIndex)
     } else {
-      this.events.output?.({
-        nextDialogue: this.nextDialogue
-      }, true)
+      this.events.output?.({}, true)
     }
   }
 

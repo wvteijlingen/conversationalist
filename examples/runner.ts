@@ -48,7 +48,6 @@ async function printPrompt(prompt: Prompt, bot: Bot) {
       choices: prompt.choices.map(e => e.body)
     })
 
-
     clearPrompt()
     const selectedChoice = prompt.choices.find(e => e.body === (response as any).input) as any
     bot.respond(selectedChoice.body, selectedChoice.value)
@@ -71,6 +70,11 @@ function clearPrompt() {
 }
 
 export default function runDialogueInTerminal(dialogue: Dialogue<unknown>) {
+  // Keep the script running eternally
+  (function wait() {
+    setTimeout(wait, 1000)
+  })()
+
   const bot = new Bot(dialogue)
   const emitter = new DelayedTypingEmitter(bot)
 
