@@ -2,6 +2,18 @@
 
 Conversationalist is a TypeScript library that allows you to easily create simple or advanced chat bots. All the conversation logic is decoupled from the user interface. This allows great flexibility, for example, a chat bot can run locally or on a server.
 
+- [Terminology](#terminology)
+- [A conversation is made up of dialogues](#a-conversation-is-made-up-of-dialogues)
+- [Receiving input from the user](#receiving-input-from-the-user)
+- [Sending output to the user](#sending-output-to-the-user)
+  - [Handling longer processing by simulating typing](#handling-longer-processing-by-simulating-typing)
+- [Dialogue state](#dialogue-state)
+- [Creating a dialogue](#creating-a-dialogue)
+  - [Example: Creating a simple linear dialogue using the built in `WaterfallDialogue` class](#example--creating-a-simple-linear-dialogue-using-the-built-in--waterfalldialogue--class)
+  - [Creating a dialogue using the built in `ScriptedDialogue` class](#creating-a-dialogue-using-the-built-in--scripteddialogue--class)
+  - [Creating a custom dialogue from scratch](#creating-a-custom-dialogue-from-scratch)
+- [Simulating human typing behaviour](#simulating-human-typing-behaviour)
+
 ## Terminology
 
 - **Conversation**: All the messages that are sent between the bot and the user. "What the user sees in the chat window".
