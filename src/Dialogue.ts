@@ -26,7 +26,7 @@ export interface DialogueEvents {
  * A Dialogue contains conversational logic to interact with the user.
  * Each implementation of this interface can be added to a Bot.
  */
-export default interface Dialogue<State> {
+export default interface Dialogue<State = {}> {
   /** Unique identifier of the dialogue. This must be unique within all dialogues of a Bot. */
   readonly identifier: string
 

@@ -49,6 +49,7 @@ interface InlinePickerPrompt extends PromptBase {
 }
 
 interface CustomPrompt extends PromptBase {
+  type: "custom"
   customType: string
 }
 

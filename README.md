@@ -160,7 +160,7 @@ const bot = new Bot(dialogue)
 bot.start()
 ```
 
-### Creating a dialogue from scratch
+### Creating a custom dialogue from scratch
 
 Creating a dialogue is as "simple" as creating a class that implements the `Dialogue` protocol. You can handle user input via the `onReceiveInput` method, and emit outpout calling the `output` event. The way you structure the internal dialogue logic is completely up to you.
 
@@ -200,4 +200,26 @@ const dialogue = new TranslatorDialogue()
 // Create a new bot with the dialogue and start it.
 const bot = new Bot(dialogue)
 bot.start()
+```
+
+## Simulating human typing behaviour
+
+```typescript
+import { DelayedTypingEmitter } from "conversationalist"
+import TranslatorDialogue from "./TranslatorDialogue"
+
+const dialogue = new TranslatorDialogue()
+const bot = new Bot(dialogue)
+
+const emitter = new DelayedTypingEmitter(bot, {
+  responseDelay: 500 // Simulate the bot taking 0.5 seconds to "read" a message before starting to "type".
+  typingDelay: 1500 // Simulate the bot taking 1.5 seconds to "type" a message.
+})
+
+emitter.events.update.on(({ isTyping, messages, prompt } => {
+  // Update your UI here
+  ui.showTypingIndicator = isTyping
+  ui.chatMessages = messages
+  ui.userInputPrompt = prompt
+})
 ```

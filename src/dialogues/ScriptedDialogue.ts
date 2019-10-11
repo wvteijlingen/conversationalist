@@ -6,7 +6,7 @@ import Prompt from "../Prompts"
  */
 export type Step<State> = (context: StepContext<State>) => AsyncStepOutput<State>
 
-export interface StepContext<State> {
+export interface StepContext<State = {}> {
   /** The user input that triggered this step. */
   input: DialogueInput
 
@@ -26,8 +26,8 @@ export interface Script<State = { }> {
   [key: string]: Step<State>
 }
 
-export type AsyncStepOutput<State> = Promise<StepOutput<State>>
-export type StepOutput<State> = {
+export type AsyncStepOutput<State = {}> = Promise<StepOutput<State>>
+export type StepOutput<State = {}> = {
   /** The new desired dialogue state. This can be omitted if you want to leave the state as is. */
   state?: State,
 
@@ -47,9 +47,9 @@ interface Snapshot<State> extends DialogueSnapshot<State> {
  */
 export default abstract class ScriptedDialogue<State = { }> implements Dialogue<State> {
   abstract readonly identifier: string
-  readonly script: Script<State> = {
-    async start(context) {
-      return { }
+  script: Script<State> = {
+    async start() {
+      throw new Error(`You must override the "script" member field.`)
     }
   }
 
@@ -63,7 +63,6 @@ export default abstract class ScriptedDialogue<State = { }> implements Dialogue<
       this.state = params.state
     } else if(params.snapshot) {
       this.state = params.snapshot.state
-
       if(params.snapshot.nextStepName && this) {
         this.nextStep = this.getScriptStepByNameOrThrow(params.snapshot.nextStepName)
       }
@@ -114,7 +113,7 @@ export default abstract class ScriptedDialogue<State = { }> implements Dialogue<
 
     let stepOutput
     try {
-      stepOutput = await step(stepContext)
+      stepOutput = await step.call(this.script, stepContext)
     } catch(error) {
       if(error instanceof InvalidInputError) {
         this.handleInvalidInputError(error, step, stepContext)
