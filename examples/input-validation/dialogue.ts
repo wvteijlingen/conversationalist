@@ -1,4 +1,5 @@
-import { AsyncStepOutput, DialogueInput, InvalidInputError, ScriptedDialogue, StepContext } from "../../src"
+import { DialogueInput } from "../../src"
+import SequentialDialogue, { InvalidInputError, StepContext, StepOutput } from "../../src/dialogues/SequentialDialogue"
 import { isNumber } from "../../src/Validator"
 
 export function validatedInput<T>(validator: (input: DialogueInput) => input is T, input: DialogueInput, errorMessage: string): T | undefined {
@@ -8,19 +9,19 @@ export function validatedInput<T>(validator: (input: DialogueInput) => input is 
   return input
 }
 
-export default class ExampleScriptedDialogue extends ScriptedDialogue {
+export default class ExampleSequentialDialogue extends SequentialDialogue {
   identifier = "exampleDialogue"
 
   script = {
-    async start(): AsyncStepOutput {
+    async start(): Promise<StepOutput> {
       return {
-        body: [`Please enter a number`],
+        body: `Please enter a number`,
         prompt: { type: "text" },
         nextStep: this.handleInput
       }
     },
 
-    async handleInput(context: StepContext): AsyncStepOutput {
+    async handleInput(context: StepContext): Promise<StepOutput> {
       const validNumber = validatedInput(isNumber, context.input, "That is not a valid number.")
 
       return {

@@ -2,9 +2,9 @@ import Dialogue, { DialogueEvents, DialogueInput, DialogueOutput, DialogueSnapsh
 import Prompt from "../Prompts"
 
 /**
- * A step in a dialogue script. This will usually be called in response to receiving user input.
+ * A step in a sequential dialogue. This will usually be called in response to receiving user input.
  */
-export type Step<State> = (context: StepContext<State>) => AsyncStepOutput<State>
+export type Step<State> = (context: StepContext<State>) => Promise<StepOutput<State>>
 
 export interface StepContext<State = {}> {
   /** The user input that triggered this step. */
@@ -17,16 +17,6 @@ export interface StepContext<State = {}> {
   state: State
 }
 
-/**
- * A script that is executed by a ScriptedDialogue.
- * Its `start` function will be called as soon as the dialogue becomes active.
- */
-export interface Script<State = {}> {
-  start: Step<State>
-  [key: string]: Step<State>
-}
-
-export type AsyncStepOutput<State = {}> = Promise<StepOutput<State>>
 export type StepOutput<State = {}> = {
   /** The new desired dialogue state. This can be omitted if you want to leave the state as is. */
   state?: State,
@@ -43,15 +33,15 @@ interface Snapshot<State> extends DialogueSnapshot<State> {
 }
 
 /**
- * A dialogue that runs by executing a script. The next step in the script is called when user input is received.
+ * A dialogue that runs by executing steps in sequence.
+ * Each step outputs a prompt to the user, and then passes the response input to the next step.
  */
-export default abstract class ScriptedDialogue<State = {}> implements Dialogue<State> {
-  protected enableSnapshots = true
+export default abstract class SequentialDialogue<State = {}> implements Dialogue<State> {
   abstract readonly identifier: string
-  protected looping = false
-  script: Script<State> = {
+  protected enableSnapshots = true
+  protected steps: Record<"start" | string, Step<State>> = {
     async start() {
-      throw new Error(`You must override the "script" member field.`)
+      throw new Error(`You must override the "steps" member field.`)
     }
   }
 
@@ -65,7 +55,7 @@ export default abstract class ScriptedDialogue<State = {}> implements Dialogue<S
     } else if(params.snapshot) {
       this.state = params.snapshot.state
       if(params.snapshot.nextStepName) {
-        this.nextStep = this.getScriptStepByNameOrThrow(params.snapshot.nextStepName)
+        this.nextStep = this.getStepByNameOrThrow(params.snapshot.nextStepName)
       }
     } else {
       throw new Error("Params must either include an initial state or a snapshot.")
@@ -85,7 +75,7 @@ export default abstract class ScriptedDialogue<State = {}> implements Dialogue<S
   }
 
   onStart() {
-    this.runStep(this.script.start)
+    this.runStep(this.steps.start)
   }
 
   rewind(rewindData: any) {
@@ -93,24 +83,18 @@ export default abstract class ScriptedDialogue<State = {}> implements Dialogue<S
       throw new Error("The provided rewindData is invalid.")
     }
 
-    this.nextStep = this.getScriptStepByNameOrThrow(rewindData.nextStepName)
+    this.nextStep = this.getStepByNameOrThrow(rewindData.nextStepName)
   }
 
-  onReceiveInput(response?: unknown) {
+  onReceiveInput(input: DialogueInput) {
     if(this.nextStep) {
-      this.runStep(this.nextStep, response)
-    }
-  }
-
-  onResume() {
-    if(this.looping && this.nextStep) {
-      this.runStep(this.nextStep)
+      this.runStep(this.nextStep, input)
     }
   }
 
   /**
-   * Runs the given script step and emits an approprate output event.
-   * @param step The script step to run.
+   * Runs the given step and emits an approprate output event.
+   * @param step The step to run.
    * @param input The user input that triggered the step.
    */
   protected async runStep(step: Step<State>, input?: DialogueInput) {
@@ -120,7 +104,7 @@ export default abstract class ScriptedDialogue<State = {}> implements Dialogue<S
 
     let stepOutput
     try {
-      stepOutput = await step.call(this.script, stepContext)
+      stepOutput = await step.call(this.steps, stepContext)
     } catch(error) {
       if(error instanceof InvalidInputError) {
         this.handleInvalidInputError(error, step, stepContext)
@@ -153,7 +137,7 @@ export default abstract class ScriptedDialogue<State = {}> implements Dialogue<S
     if(stepOutput.nextStep) {
       this.nextStep = stepOutput.nextStep
     } else {
-      this.nextStep = this.looping ? this.script.start : undefined
+      this.nextStep = undefined
     }
 
     const dialogueOutput = this.buildDialogueOutput(stepOutput)
@@ -179,11 +163,11 @@ export default abstract class ScriptedDialogue<State = {}> implements Dialogue<S
     return dialogueOutput
   }
 
-  private getScriptStepByNameOrThrow(name: string): Step<State> {
-    const entry = Object.entries(this.script).find(e => e[0] === name)
+  private getStepByNameOrThrow(name: string): Step<State> {
+    const entry = Object.entries(this.steps).find(e => e[0] === name)
 
     if(!entry) {
-      throw new Error(`The script step "${name}" does not exist in the script.`)
+      throw new Error(`The step "${name}" does not exist in dialogue "${this.identifier}.`)
     }
 
     return entry[1]

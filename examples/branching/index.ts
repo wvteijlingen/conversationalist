@@ -1,30 +1,30 @@
-import { AsyncStepOutput, InvalidInputError, ScriptedDialogue, StepContext } from "../../src"
+import SequentialDialogue, { StepOutput, InvalidInputError, StepContext } from "../../src/dialogues/SequentialDialogue"
 import ExampleReverseDialogue from "../custom/dialogue"
 import runDialogueInTerminal from "../runner"
-import ExampleScriptedDialogue from "../scripted/dialogue"
+import ExampleSequentialDialogue from "../sequential/dialogue"
 import ExampleWaterfallDialogue from "../waterfall/dialogue"
 
-class BranchingDialogue extends ScriptedDialogue {
+class BranchingDialogue extends SequentialDialogue {
   identifier = "branchingDialogue"
   looping = true
 
   script = {
-    async start(): AsyncStepOutput {
+    async start(): Promise<StepOutput> {
       return {
         body: [`Which example dialogue would like to run?`],
         prompt: {
           type: "picker",
           choices: [
-            { body: "The revers-o-bot", value: "reverse" },
-            { body: "The waterfall dialogue", value: "waterfall" },
-            { body: "The scripted dialogue", value: "scripted" },
+            { body: "Revers-o-bot", value: "reverse" },
+            { body: "Waterfall dialogue", value: "waterfall" },
+            { body: "Sequential dialogue", value: "sequential" },
           ]
         },
         nextStep: this.handleChoice
       }
     },
 
-    async handleChoice(context: StepContext): AsyncStepOutput {
+    async handleChoice(context: StepContext): Promise<StepOutput> {
       if(context.input === "reverse") {
         return {
           nextDialogue: new ExampleReverseDialogue()
@@ -33,9 +33,9 @@ class BranchingDialogue extends ScriptedDialogue {
         return {
           nextDialogue: new ExampleWaterfallDialogue({ state: { username: "Bob" } })
         }
-      } else if(context.input === "scripted") {
+      } else if(context.input === "sequential") {
         return {
-          nextDialogue: new ExampleScriptedDialogue({ state: {} })
+          nextDialogue: new ExampleSequentialDialogue({ state: {} })
         }
       } else {
         throw new InvalidInputError("That is not a dialogue that I know.")

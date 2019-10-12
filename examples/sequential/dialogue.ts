@@ -1,4 +1,4 @@
-import { AsyncStepOutput, InvalidInputError, ScriptedDialogue, StepContext } from "../../src"
+import SequentialDialogue, { InvalidInputError, StepContext, StepOutput } from "../../src/dialogues/SequentialDialogue"
 
 interface State {
   username?: string
@@ -6,11 +6,11 @@ interface State {
 
 enum Color { Blue, Yellow }
 
-export default class ExampleScriptedDialogue extends ScriptedDialogue<State> {
+export default class ExampleSequentialDialogue extends SequentialDialogue<State> {
   identifier = "exampleDialogue"
 
   script = {
-    async start(): AsyncStepOutput<State> {
+    async start(): Promise<StepOutput<State>> {
       return {
         body: [`Hi there!`, "Welcome to this simple scripted dialogue.", "What is your name?"],
         prompt: { type: "text" },
@@ -18,7 +18,7 @@ export default class ExampleScriptedDialogue extends ScriptedDialogue<State> {
       }
     },
 
-    async handleUsername(context: StepContext<State>): AsyncStepOutput<State> {
+    async handleUsername(context: StepContext<State>): Promise<StepOutput<State>> {
       if(typeof context.input !== "string" || context.input.trim().length === 0) {
         throw new InvalidInputError("Oh, that doesn't seem to be a valid name. Please enter your name")
       }
@@ -36,7 +36,7 @@ export default class ExampleScriptedDialogue extends ScriptedDialogue<State> {
       }
     },
 
-    async handleFavoriteColor(context: StepContext<State>): AsyncStepOutput<State> {
+    async handleFavoriteColor(context: StepContext<State>): Promise<StepOutput<State>> {
       if(context.input === Color.Blue) {
         return {
           body: "Great, blue is also my favorite color!"

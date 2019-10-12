@@ -1,5 +1,5 @@
 import { Bot, Script, ScriptedDialogue } from ".."
-import { AsyncStepOutput, StepContext } from "../dialogues/ScriptedDialogue"
+import { AsyncStepOutput, StepContext } from "../dialogues/SequentialDialogue"
 
 const EMPTY_DIALOGUE: Script = {
   async start() { return {} }
