@@ -2,7 +2,7 @@ import runDialogueInTerminal from "../runner"
 import ExampleScriptedDialogue from "./dialogue"
 
 const dialogue = new ExampleScriptedDialogue({
-  state: { }
+  state: {}
 })
 
 runDialogueInTerminal(dialogue)

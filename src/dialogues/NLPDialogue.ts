@@ -17,10 +17,10 @@ interface Intent {
   ]
 }
 
-export default abstract class NLPDialogue<State = { }> implements Dialogue<State> {
+export default abstract class NLPDialogue<State = {}> implements Dialogue<State> {
   abstract readonly identifier: string
   protected state: State
-  events: DialogueEvents = { }
+  events: DialogueEvents = {}
 
   constructor(params: { state: State, snapshot?: never }) {
     this.state = params.state
@@ -35,7 +35,7 @@ export default abstract class NLPDialogue<State = { }> implements Dialogue<State
   }
 
   onReceiveInput(input?: DialogueInput) {
-    const intent: Intent = { query: input} as Intent
+    const intent: Intent = { query: input } as Intent
     this.handleIntent(intent).then(output => {
       this.events.output?.(output.output, output.isFinished)
     }, error => {

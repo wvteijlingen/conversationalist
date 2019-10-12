@@ -14,7 +14,7 @@ export default abstract class WaterfallDialogue<State = {}> implements Dialogue<
   abstract readonly identifier: string
   readonly steps: Array<Step<State>> = []
 
-  events: DialogueEvents = { }
+  events: DialogueEvents = {}
 
   protected state: State
   protected nextStepIndex?: number = 0

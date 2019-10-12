@@ -16,7 +16,7 @@ export default class DelayedTypingEmitter {
   private currentTimeout?: NodeJS.Timeout
   private isFlushing = false
 
-  readonly responseDelay: number
+  readonly readingDelay: number
   readonly typingDelay: number
 
   readonly events = {
@@ -26,11 +26,11 @@ export default class DelayedTypingEmitter {
   /**
    *
    * @param bot The underlying bot for which typing behaviour is simulated.
-   * @param responseDelay Time in milliseconds spent by the bot "reading" a user message.
+   * @param readingDelay Time in milliseconds spent by the bot "reading" a user message.
    * @param typingDelay Time in milliseconds spent by the bot "typing" a message.
    */
-  constructor(bot: Bot, { responseDelay = 500, typingDelay = 1500}: { responseDelay?: number, typingDelay?: number } = {}) {
-    this.responseDelay = responseDelay
+  constructor(bot: Bot, { readingDelay = 500, typingDelay = 1500 }: { readingDelay?: number, typingDelay?: number } = {}) {
+    this.readingDelay = readingDelay
     this.typingDelay = typingDelay
 
     this.isActive = bot.isActive
@@ -39,7 +39,7 @@ export default class DelayedTypingEmitter {
 
     this.botListeners.push(bot.events.activeChanged.on(async active => {
       this.isActive = active
-      await pause(this.responseDelay * 1.5)
+      await pause(this.readingDelay * 1.5)
       this.sendStateUpdate()
     }))
 
@@ -85,7 +85,7 @@ export default class DelayedTypingEmitter {
     }
 
     if(message.author === "bot") {
-      setTimeout(() => this.flushMessage(message), this.responseDelay)
+      setTimeout(() => this.flushMessage(message), this.readingDelay)
     } else {
       this.messages = [...this.messages, message]
 

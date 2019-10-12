@@ -1,6 +1,15 @@
 # Conversationalist
 
-Conversationalist is a TypeScript library that allows you to easily create simple or advanced chat bots. All the conversation logic is decoupled from the user interface. This allows great flexibility, for example, a chat bot can run locally or on a server.
+Conversationalist is a TypeScript framework that allows you to easily create simple or advanced chat bots using reusable dialogues.
+
+## Notable features
+
+- Interface based approach allows great flexibility.
+- Built in dialogue classes to cover most common conversation patterns.
+- Fully UI and environment agnostic. You can run this locally on a device, your own server, or in "the cloud".
+- No dependencies!
+
+## Table of contents
 
 - [Terminology](#terminology)
 - [A conversation is made up of dialogues](#a-conversation-is-made-up-of-dialogues)
@@ -74,17 +83,19 @@ A `WaterfallDialogue` is a simple dialogue that runs through a list of messages 
 The following example creates a simple waterfall dialogue, and starts it using a `Bot`:
 
 ```typescript
+import { WaterfallDialogue } from "conversationalist"
+
 interface State {
   username: string
 }
 
-class ExampleDialogue extends WaterfallDialogue<State> {
+export default class ExampleWaterfallDialogue extends WaterfallDialogue<State> {
   identifier = "exampleDialogue"
 
   steps = [
     (s: State) => ({
-      body: [`Hi ${s.username)}!`, "Welcome to this simple waterfall dialogue."],
-      buttons: "Hello"
+      body: [`Hi ${s.username}!`, "Welcome to this simple waterfall dialogue."],
+      buttons: ["Hello", "Hi"]
     }),
     (s: State) => ({
       body: "Do you prefer blue or yellow?",
@@ -97,7 +108,7 @@ class ExampleDialogue extends WaterfallDialogue<State> {
   ]
 }
 
-const dialogue = new ExampleDialogue({
+const dialogue = new ExampleWaterfallDialogue({
   state: { username: "Bob" }
 })
 
@@ -115,36 +126,40 @@ As you can see in the following example, a `ScriptedDialogue` allow you to execu
 The following example creates a simple scripted dialogue, and starts it using a `Bot`:
 
 ```typescript
+import { AsyncStepOutput, InvalidInputError, ScriptedDialogue, StepContext } from "conversationalist"
+
 interface State {
   username?: string
 }
 
 enum Color { Blue, Yellow }
 
-class ExampleDialogue extends ScriptedDialogue<State> {
+export default class ExampleScriptedDialogue extends ScriptedDialogue<State> {
   identifier = "exampleDialogue"
 
-  steps = {
-    async start(context: StepContext<State>): AsyncStepOutput<State> {
+  script = {
+    async start(): AsyncStepOutput<State> {
       return {
         body: [`Hi there!`, "Welcome to this simple scripted dialogue.", "What is your name?"],
-        prompt: { type: "text" }
+        prompt: { type: "text" },
         nextStep: this.handleUsername
       }
     },
 
     async handleUsername(context: StepContext<State>): AsyncStepOutput<State> {
       if(typeof context.input !== "string" || context.input.trim().length === 0) {
-        throw InvalidInputError("Oh, that doesn't seem to be a valid name. Please enter your name")
+        throw new InvalidInputError("Oh, that doesn't seem to be a valid name. Please enter your name")
       }
 
       return {
-        body: `Nice to meet you ${context.input}.`, "Do you prefer blue or yellow?",
-        prompt: { type: "inlinePicker", choices: [
-          { body: "Blue", value: Color.Blue },
-          { body: "Yellow", value: Color.Yellow }
-        ]},
-        state: { ...context.state, username: context.input }
+        body: [`Nice to meet you ${context.input}.`, "Do you prefer blue or yellow?"],
+        prompt: {
+          type: "inlinePicker", choices: [
+            { body: "Blue", value: Color.Blue },
+            { body: "Yellow", value: Color.Yellow }
+          ]
+        },
+        state: { ...context.state, username: context.input },
         nextStep: this.handleFavoriteColor
       }
     },
@@ -163,7 +178,8 @@ class ExampleDialogue extends ScriptedDialogue<State> {
   }
 }
 
-const dialogue = new ExampleDialogue({
+
+const dialogue = new ExampleScriptedDialogue({
   state: {}
 })
 
@@ -224,7 +240,7 @@ const dialogue = new TranslatorDialogue()
 const bot = new Bot(dialogue)
 
 const emitter = new DelayedTypingEmitter(bot, {
-  responseDelay: 500 // Simulate the bot taking 0.5 seconds to "read" a message before starting to "type".
+  readingDelay: 500 // Simulate the bot taking 0.5 seconds to "read" a message before starting to "type".
   typingDelay: 1500 // Simulate the bot taking 1.5 seconds to "type" a message.
 })
 

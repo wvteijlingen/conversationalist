@@ -44,7 +44,7 @@ class BranchingDialogue extends ScriptedDialogue {
   }
 
   onResume() {
-    this.runStep(this.script.start)
+    this.onStart()
   }
 }
 

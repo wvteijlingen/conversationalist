@@ -21,7 +21,7 @@ export interface StepContext<State = {}> {
  * A script that is executed by a ScriptedDialogue.
  * Its `start` function will be called as soon as the dialogue becomes active.
  */
-export interface Script<State = { }> {
+export interface Script<State = {}> {
   start: Step<State>
   [key: string]: Step<State>
 }
@@ -45,7 +45,7 @@ interface Snapshot<State> extends DialogueSnapshot<State> {
 /**
  * A dialogue that runs by executing a script. The next step in the script is called when user input is received.
  */
-export default abstract class ScriptedDialogue<State = { }> implements Dialogue<State> {
+export default abstract class ScriptedDialogue<State = {}> implements Dialogue<State> {
   protected enableSnapshots = true
   abstract readonly identifier: string
   protected looping = false
@@ -57,14 +57,14 @@ export default abstract class ScriptedDialogue<State = { }> implements Dialogue<
 
   protected state: State
   protected nextStep?: Step<State>
-  events: DialogueEvents = { }
+  events: DialogueEvents = {}
 
   constructor(params: { state: State, snapshot?: never } | { state?: never, snapshot: Snapshot<State> }) {
     if(params.state) {
       this.state = params.state
     } else if(params.snapshot) {
       this.state = params.snapshot.state
-      if(params.snapshot.nextStepName && this) {
+      if(params.snapshot.nextStepName) {
         this.nextStep = this.getScriptStepByNameOrThrow(params.snapshot.nextStepName)
       }
     } else {
@@ -80,7 +80,7 @@ export default abstract class ScriptedDialogue<State = { }> implements Dialogue<
     return {
       identifier: this.identifier,
       state: this.state,
-      nextStepName: this.nextStep && this.nextStep.name
+      nextStepName: this.nextStep?.name
     }
   }
 
