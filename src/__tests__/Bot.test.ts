@@ -2,7 +2,7 @@ import { Bot, Script, ScriptedDialogue } from ".."
 import { AsyncStepOutput, StepContext } from "../dialogues/ScriptedDialogue"
 
 const EMPTY_DIALOGUE: Script = {
-  async start() { return { } }
+  async start() { return {} }
 }
 
 describe("A bot that receives a response", () => {
@@ -43,7 +43,7 @@ describe("A bot that receives a response", () => {
       async handler(result) {
         expect(result).toBe("Body")
         done()
-        return { }
+        return {}
       }
     }
 
