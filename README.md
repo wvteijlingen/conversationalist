@@ -11,16 +11,23 @@ Conversationalist is a TypeScript framework that allows you to easily create sim
 
 ## Table of contents
 
+* [Notable features](#notable-features)
+* [Table of contents](#table-of-contents)
 * [Terminology](#terminology)
 * [Building blocks of a conversation](#building-blocks-of-a-conversation)
-* [Example: Pasta-bot](#example--pasta-bot)
+* [Example: Pasta-bot](#example-pasta-bot)
+* [Sequential dialogues](#sequential-dialogues)
 * [Dialogue state](#dialogue-state)
 * [Advanced](#advanced)
   + [Simulating human behaviour](#simulating-human-behaviour)
+  + [Attachments](#attachments)
+  + [Persistence](#persistence)
+  + [Message body vs value](#message-body-vs-value)
+  + [Undoing user responses](#undoing-user-responses)
   + [Message flow](#message-flow)
   + [Creating custom dialogue subclasses](#creating-custom-dialogue-subclasses)
     - [Sending output to the user](#sending-output-to-the-user)
-    - [Example: Translator-bot](#example--translator-bot)
+    - [Example: Translator-bot](#example-translator-bot)
     - [Showing processing state](#showing-processing-state)
 
 ## Terminology
@@ -40,10 +47,16 @@ At any time there is only 1 active dialogue. This does not mean your chat bot is
 
 ## Example: Pasta-bot
 
-The following example dialogue is a bot that takes orders for pasta:
+The following example dialogue is a bot that takes orders for pasta. It shows most of the basic
+functionality that is provided by the framework.
 
 ```typescript
-import SequentialDialogue, { InvalidInputError, StepContext, StepOutput } from "../../src/dialogues/SequentialDialogue"
+import { Bot } from "conversationalist"
+import SequentialDialogue, {
+  InvalidInputError,
+  StepContext,
+  StepOutput
+} from "conversationalist/dialogues/SequentialDialogue"
 
 interface Order {
   pastaType?: string
@@ -67,8 +80,8 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
         messages: "What kind of pasta would you like?",
 
         // Include a prompt that allows the user to pick from a predefined set of pastas.
-        // The result of this prompt will be passed into the `handlePastaType` method, as indicated by the
-        // `nextStep` field.
+        // The result of this prompt will be passed into the `handlePastaType` method, as indicated by
+        // the `nextStep` field.
         prompt: {
           type: "picker",
           choices: [
@@ -82,7 +95,8 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
         // Here we store a new pasta order in the state so we can populate it in subsequent steps.
         state: { ...context.state, currentOrder: {} },
 
-        // Specify that `handlePastaType` is the next step that should be called with the result of the prompt.
+        // Specify that `handlePastaType` is the next step that should be called with the result of
+        // the prompt.
         nextStep: this.handlePastaType
       }
     },
@@ -93,7 +107,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
       // We validate the user input to see if it is a valid string.
       // If not, throw an `InvalidInputError` which will automatically reprompt the user for input.
       if(typeof pastaType !== "string" || pastaType.trim().length === 0) {
-        throw new InvalidInputError("🤔 It doesn't seem we have that kind of pasta. Please select a pasta from our menu.")
+        throw new InvalidInputError("We don't have that pasta. Please select a pasta from our menu.")
       }
 
       return {
@@ -117,7 +131,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
       const sauce = context.input
 
       if(typeof sauce !== "string" || sauce.trim().length === 0) {
-        throw new InvalidInputError("Sorry, we don't have that sauce. Please select a sauce from our menu.")
+        throw new InvalidInputError("We don't have that sauce. Please select a sauce from our menu.")
       }
 
       return {
@@ -148,9 +162,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
       }
 
       return {
-        messages: [
-          "Great, I just need your address so I know where to send your delicious pasta.",
-        ],
+        messages: "Great, I just need your address so I know where to send your delicious pasta.",
         prompt: { type: "text" },
         nextStep: this.finishOrder
       }
@@ -169,8 +181,25 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
         address,
       })
 
+      const pdfReceipt = await DeliveryService.generatePDFReceipt({
+        orders: context.state.orders
+        address,
+      })
+
       return {
-        messages: "Your pasta is on its way! Thank you for ordering with pasta-bot."
+        messages: [
+          "Your pasta is on its way! Thank you for ordering with pasta-bot.",
+
+          // You can also return messages that include an attachment.
+          // In this case, we attach a URL attachment with the link to a PDF receipt.
+          {
+            body: "Here is a link to your receipt as a PDF."
+            attachment: {
+              type: "url",
+              href: pdfReceipt
+            }
+          }
+        ]
       }
     }
   }
@@ -183,6 +212,10 @@ const dialogue = new PastaOrderDialogue({
 const bot = new Bot(dialogue)
 bot.start()
 ```
+
+## Sequential dialogues
+
+TBD: Explain how the `SequentialDialogue` works.
 
 ## Dialogue state
 
@@ -217,6 +250,22 @@ emitter.events.update.on(({ isTyping, allMessages, addedMessages, prompt } => {
   ui.userInputPrompt = prompt
 })
 ```
+
+### Attachments
+
+TBD: Explain attachments.
+
+### Persistence
+
+TBD: Explain snapshots.
+
+### Message body vs value
+
+TDB: Explain the difference between a message body and value.
+
+### Undoing user responses
+
+TBD: Explain undoing of user responses and rewinding.
 
 ### Message flow
 
