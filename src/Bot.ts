@@ -1,5 +1,6 @@
+import { Attachment } from "."
 import Dialogue, { DialogueOutput, DialogueSnapshot } from "./Dialogue"
-import { BotMessage, Message, UserMessage } from "./Message"
+import { BotMessage, Message, SYSTEM_DIALOGUE_IDENTIFIER, UserMessage } from "./Message"
 import { Middleware } from "./Middleware"
 import Prompt from "./Prompts"
 import { TypedEvent } from "./TypedEvent"
@@ -7,6 +8,7 @@ import { uuidv4 } from "./utils"
 
 export interface BotSnapshot {
   version: number
+  id: string
   didStart: boolean
   messageLog: Message[]
   dialogues: Array<DialogueSnapshot<unknown>>
@@ -19,14 +21,14 @@ export type DialogueHydrator = (dialogueIdentifier: string, snapshot: DialogueSn
  * A bot does not send any messages itself, but instead delegates that to `Dialogue` objects.
  */
 export default class Bot {
+  /** Unique ID that identifies this bot. */
+  readonly id: string
+
   /** All messages that were sent or received by this bot. */
   messageLog: Message[] = []
 
   /** Optional logger that allows you to plug in your own logging backend. */
-  logger?: (message: any) => void
-
-  /** Whether to output debug messages as chat messages. */
-  debugMode = false
+  logger?: Pick<Console, "debug" | "warn">
 
   /** All events that can be emitted by a Bot. */
   readonly events = {
@@ -83,6 +85,7 @@ export default class Bot {
   get snapshot(): BotSnapshot {
     return {
       version: 1,
+      id: this.id,
       didStart: this.didStart,
       messageLog: this.messageLog,
       dialogues: this.dialogues.map(e => e.snapshot).filter(e => !!e) as Array<DialogueSnapshot<unknown>>
@@ -112,7 +115,8 @@ export default class Bot {
    * Instantiate a new Bot with the given root dialogue.
    * This does not automatically start the dialogue.
    */
-  constructor(rootDialogue?: Dialogue<any>) {
+  constructor(rootDialogue?: Dialogue<any>, id = uuidv4()) {
+    this.id = id
     if(rootDialogue) {
       this.pushDialogue(rootDialogue, false)
     }
@@ -124,7 +128,7 @@ export default class Bot {
    */
   static async fromSnapshot(snapshot: BotSnapshot, dialogueHydrator: DialogueHydrator) {
     const dialogues = await Promise.all(snapshot.dialogues.map(e => dialogueHydrator(e.identifier, e)))
-    const bot = new Bot()
+    const bot = new Bot(undefined, snapshot.id)
     for(const dialogue of dialogues) {
       bot.pushDialogue(dialogue, false)
     }
@@ -150,11 +154,11 @@ export default class Bot {
   }
 
   /**
-   * Send a user response to the bot.
-   * @param body The optional text body of the response. This will be added to the messageLog as a user message.
-   * @param value The optional value of the response. Will default to the body if not given.
+   * Send a user message to the bot.
+   * @param body The optional text body of the message. This will be added to the message log.
+   * @param value The optional value of the message. Defaults to the body if not given.
    */
-  respond(body?: string, value?: unknown) {
+  sendUserMessage({ body, value, attachment }: { body?: string; value?: unknown; attachment?: Attachment } = {}) {
     for(const middleware of this.middlewares) {
       if(!middleware.before) {
         continue
@@ -172,29 +176,30 @@ export default class Bot {
         creationDate: new Date(),
         body,
         value,
-        isUndoAble: (this.lastBotMessage?._meta.rewindData !== undefined) || false
+        attachment,
+        isUndoAble: (this.lastBotMessage?._meta.rewindToken !== undefined) || false
       }
 
       this.addMessages([message])
     }
 
     if(this.activeDialogue) {
-      this.logDebug(`Handling input "${body}" <${value}> by dialogue "${this.activeDialogue.identifier}"`)
+      this.log(`Handling input "${body}" <${value}> by dialogue "${this.activeDialogue.identifier}"`)
       try {
-        this.activeDialogue.onReceiveInput(value !== undefined ? value : body)
+        this.activeDialogue.onReceiveInput(value !== undefined ? value : body, attachment)
       } catch(error) {
         this.events.dialogueError.emit(error)
       }
     } else {
-      this.logDebug(`Received input "${body}" <${value}> but there is not active dialogue.`)
+      this.log(`Received input "${body}" <${value}> but there is not active dialogue.`)
     }
   }
 
   /**
-   * Undoes a user response with the given id.
-   * @param messageId The id of the response message to undo.
+   * Undoes a user message with the given id.
+   * @param messageId The id of the message to undo.
    */
-  undoResponse(messageId: string) {
+  undoUserMessage(messageId: string) {
     const indexOfUndidMessage = this.messageLog.findIndex(e => e.id === messageId && e.author === "user")
     if(indexOfUndidMessage === -1) {
       throw new Error(`User message with id ${messageId} does not exist in the message log.`)
@@ -209,7 +214,7 @@ export default class Bot {
       }
     }
 
-    if(!botMessage || !botMessage._meta.rewindData) {
+    if(!botMessage || !botMessage._meta.rewindToken) {
       throw new Error("No rewind data found for preceding bot message.")
     }
 
@@ -221,11 +226,11 @@ export default class Bot {
       throw new Error(`Cannot undo a response for active dialogue because the dialogue does not implement the "rewind" method.`)
     }
 
-    this.logDebug(`Undid response ${messageId}`)
+    this.log(`Undid response ${messageId}`)
 
     const removedMessages = this.messageLog.slice(indexOfUndidMessage)
     this.messageLog = this.messageLog.slice(0, indexOfUndidMessage)
-    this.activeDialogue.rewind(botMessage._meta.rewindData)
+    this.activeDialogue.rewind(botMessage._meta.rewindToken)
     this.events.messagesChanged.emit({ added: [], removed: removedMessages, updated: [] })
   }
 
@@ -249,18 +254,18 @@ export default class Bot {
   }
 
   /**
-   * Interjects the given messages without handling them.
+   * Interjects the given messages by adding them to the message log.
    * This can be useful to send "one-off" messages from middleware or outside of a dialogue.
    * @param messages
    */
   interjectMessages(messages: string[]) {
-    const botMessages = messages.map(message => ({
+    const botMessages: BotMessage[] = messages.map(message => ({
       id: uuidv4(),
       author: "bot",
       creationDate: new Date(),
       body: message,
-      _meta: { dialogueIdentifier: "_system" }
-    }) as BotMessage)
+      _meta: { dialogueIdentifier: SYSTEM_DIALOGUE_IDENTIFIER }
+    }))
 
     this.addMessages(botMessages)
   }
@@ -269,7 +274,7 @@ export default class Bot {
    * Sends an `onInterrupt` call to the active dialogue.
    */
   interrupt() {
-    this.logDebug("Interrupting active dialogue")
+    this.log("Interrupting active dialogue")
     try {
       this.activeDialogue?.onInterrupt?.()
     } catch(error) {
@@ -279,7 +284,7 @@ export default class Bot {
 
   // Sends an `onResume` call to the active dialogue.
   resume() {
-    this.logDebug("Resuming active dialogue")
+    this.log("Resuming active dialogue")
     try {
       this.activeDialogue?.onResume?.()
     } catch(error) {
@@ -293,7 +298,7 @@ export default class Bot {
    * @param start Whether to start it.
    */
   private pushDialogue(dialogue: Dialogue<unknown>, start: boolean = true) {
-    this.logDebug(`Pushing dialogue: ${dialogue.identifier}`)
+    this.log(`Pushing dialogue: ${dialogue.identifier}`)
 
     try {
       this.activeDialogue?.onInterrupt?.()
@@ -320,7 +325,7 @@ export default class Bot {
 
   private handleDialogueOutputStart(dialogue: Dialogue<unknown>) {
     if(dialogue !== this.activeDialogue) {
-      this.logDebug(`An inactive dialogue emitted an outputStart event. This is not supported, the event will be discarded. Dialogue: ${dialogue.identifier}`)
+      this.log(`An inactive dialogue emitted an outputStart event. This is not supported, the event will be discarded. Dialogue: ${dialogue.identifier}`, "warn")
       return
     }
 
@@ -329,7 +334,7 @@ export default class Bot {
 
   private handleDialogueOutput(dialogue: Dialogue<unknown>, output: DialogueOutput, isFinished: boolean) {
     if(dialogue !== this.activeDialogue) {
-      this.logDebug(`An inactive dialogue emitted an output event. This is not supported, the event will be discarded. Dialogue: ${dialogue.identifier}`)
+      this.log(`An inactive dialogue emitted an output event. This is not supported, the event will be discarded. Dialogue: ${dialogue.identifier}`, "warn")
       return
     }
 
@@ -403,56 +408,51 @@ export default class Bot {
       }
 
       try {
-        this.activeDialogue?.onResume?.(lastMessage)
+        this.activeDialogue?.onResume?.()
       } catch(error) {
         this.events.dialogueError.emit(error)
       }
     }
 
     this.events.dialogueRemoved.emit(dialogue)
-    this.logDebug(`Removed dialogue: ${dialogue.identifier}`)
+    this.log(`Removed dialogue: ${dialogue.identifier}`)
   }
 
   private buildMessagesFromDialogueOutput(output: DialogueOutput, dialogueIdentifier: string): BotMessage[] {
-    if(!output.body) {
+    if(!output.messages) {
       return []
     }
 
-    const bodies = Array.isArray(output.body) ? output.body : [output.body]
-    return bodies.map((body, index, array) => ({
+    const messages = Array.isArray(output.messages) ? output.messages : [output.messages]
+
+    return messages.map((message, index, array): BotMessage => ({
       id: uuidv4(),
       author: "bot",
       creationDate: new Date(),
-      body: typeof body === "string" ? body : undefined,
-      attachment: typeof body !== "string" ? body : undefined,
+      body: typeof message === "string" ? message : message.body,
+      attachment: typeof message === "string" ? undefined : message.attachment,
       prompt: index === array.length - 1 ? output.prompt : undefined,
       _meta: {
         dialogueIdentifier,
-        rewindData: output.rewindData
+        rewindToken: output.rewindToken
       }
-    } as BotMessage))
+    }))
   }
 
-  private logDebug(message: any) {
-    if(this.logger) {
-      this.logger(message)
-    }
-
-    if(this.debugMode) {
-      this.interjectMessages([`[SYSTEM] ${message}`])
-    }
+  private log(message?: any, level: "debug" | "warn" = "debug") {
+    this.logger?.[level](message)
   }
 
   logDebugInfo() {
-    this.logDebug("=== Message log ===")
+    this.log("=== Message log ===")
     for(const message of this.messageLog) {
-      this.logDebug(message)
+      this.log(message)
     }
 
-    this.logDebug("=== Dialogue stack ===")
+    this.log("=== Dialogue stack ===")
     for(const dialogue of this.dialogues) {
       // @ts-ignore: We know that the dialog contains a state property.
-      this.logDebug(`${dialogue.identifier} – ${JSON.stringify(dialogue.state)}`)
+      this.log(`${dialogue.identifier} – ${JSON.stringify(dialogue.state)}`)
     }
   }
 }

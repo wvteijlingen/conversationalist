@@ -1,9 +1,10 @@
 export interface ImageAttachment {
   type: "image"
-  src: string
+  href: string
 }
 
 interface CustomAttachment {
+  type: "custom"
   customType: string
 }
 

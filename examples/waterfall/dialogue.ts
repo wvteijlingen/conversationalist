@@ -9,15 +9,15 @@ export default class ExampleWaterfallDialogue extends WaterfallDialogue<State> {
 
   steps = [
     (s: State) => ({
-      body: [`Hi ${s.username}!`, "Welcome to this simple waterfall dialogue."],
+      messages: [`Hi ${s.username}!`, "Welcome to this simple waterfall dialogue."],
       buttons: ["Hello", "Hi"]
     }),
     (s: State) => ({
-      body: "Do you prefer blue or yellow?",
+      messages: "Do you prefer blue or yellow?",
       buttons: ["Blue", "Yellow"]
     }),
     (s: State) => ({
-      body: ["Thank you for your answer.", "Goodbye!"],
+      messages: ["Thank you for your answer.", "Goodbye!"],
       buttons: "Bye 👋"
     })
   ]

@@ -10,7 +10,7 @@ export default class ReverseDialogue implements Dialogue {
 
   onStart() {
     this.events.output?.({
-      body: [
+      messages: [
         "Hi, I am revers-o-bot! Say anything, and I will reverse it for you.",
         "You can say 'stop' to stop the dialogue."
       ],
@@ -28,7 +28,7 @@ export default class ReverseDialogue implements Dialogue {
 
     if(typeof input === "string") {
       this.events.output?.({
-        body: input.split("").reverse().join(""),
+        messages: input.split("").reverse().join(""),
         prompt: { type: "text" }
       }, false)
     }

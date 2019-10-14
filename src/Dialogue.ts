@@ -1,6 +1,6 @@
-import Attachment from "./Attachments"
 import { BotMessage } from "./Message"
 import Prompt from "./Prompts"
+import Attachment from "./Attachments"
 
 export interface DialogueEvents {
   /**
@@ -48,32 +48,31 @@ export default interface Dialogue<State = {}> {
   /**
    * Called when the dialogue receives a response from the user.
    */
-  onReceiveInput(input: DialogueInput): void
+  onReceiveInput(input: DialogueInput, attachment?: Attachment): void
 
   /**
    * Called when the dialogue is interrupted.
-   * This usually happens when it resigns as active dialogue.
    */
   onInterrupt?(): void
 
   /**
    * Called when the dialogue is resumed after an interruption.
-   * This usually happens when it becomes the active dialogue.
-   * @param previousMessage The last message that was sent by this dialogue, before it was interrupted.
    */
-  onResume?(lastMessage?: BotMessage): void
+  onResume?(): void
 
   /**
-   * Called when the dialogue is finished
+   * Called when the dialogue is finished.
    */
   onFinish?(): void
 
   /**
-   * Rewinds the dialogue using the given `rewindData`.
+   * Rewinds the dialogue using the given `rewindToken`.
    * Each dialogue can decide what this means.
    */
-  rewind?(rewindData: any): void
+  rewind?(rewindToken: RewindToken): void
 }
+
+export type RewindToken = string
 
 export interface DialogueSnapshot<State> {
   /** The identifier of the dialogue. */
@@ -83,20 +82,22 @@ export interface DialogueSnapshot<State> {
   state: State
 }
 
+type DialogueOutputMessage = Pick<BotMessage, "body" | "attachment"> | string
+
 /**
  * Output sent by a dialogue, received by a user.
  */
 export interface DialogueOutput {
-  /** One or multiple messages or attachments. */
-  body?: string | Attachment | Array<string | Attachment>
+  /** One or multiple messages. */
+  messages?: DialogueOutputMessage | DialogueOutputMessage[]
 
   /** An optional prompt to indicate the response method available to the user. */
-  prompt?: Prompt,
+  prompt?: Prompt
 
   /** Opaque rewind data that will be included when the dialogue is rewound to this step. */
-  rewindData?: any,
+  rewindToken?: RewindToken
 
-  /** And optional dialogue to transition to. */
+  /** An optional dialogue to transition to. */
   nextDialogue?: Dialogue<unknown>
 }
 

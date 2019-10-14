@@ -26,7 +26,7 @@ describe("A bot that receives a response", () => {
     }
     const chatBot = new Bot(new TestDialogue({ state: {} }))
     chatBot.events.messagesChanged.once(changeSet => {
-      chatBot.respond("Body", "Value")
+      chatBot.sendUserMessage({ body: "Body", value: "Value" })
     })
     chatBot.start()
   })
@@ -49,7 +49,7 @@ describe("A bot that receives a response", () => {
 
     const chatBot = new Bot(new ScriptedDialogue("test", dialogue))
     chatBot.events.messagesAdded.once(messages => {
-      chatBot.respond("Body")
+      chatBot.sendUserMessage({ body: "Body" })
     })
     chatBot.start()
   })
@@ -62,14 +62,14 @@ describe("A bot that receives a response", () => {
       done()
     })
     chatBot.start()
-    chatBot.respond("Body", "Value")
+    chatBot.sendUserMessage({ body: "Body", value: "Value" })
   })
 
   it("emits a messagesChanged event", done => {
     const chatBot = new Bot(new ScriptedDialogue("test", EMPTY_DIALOGUE))
     chatBot.start()
     chatBot.events.messagesChanged.on(done)
-    chatBot.respond("Body", "Value")
+    chatBot.sendUserMessage({ body: "Body", value: "Value" })
   })
 })
 

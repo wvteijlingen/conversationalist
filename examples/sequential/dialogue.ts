@@ -12,7 +12,7 @@ export default class ExampleSequentialDialogue extends SequentialDialogue<State>
   script = {
     async start(): Promise<StepOutput<State>> {
       return {
-        body: [`Hi there!`, "Welcome to this simple scripted dialogue.", "What is your name?"],
+        messages: [`Hi there!`, "Welcome to this simple scripted dialogue.", "What is your name?"],
         prompt: { type: "text" },
         nextStep: this.handleUsername
       }
@@ -24,7 +24,7 @@ export default class ExampleSequentialDialogue extends SequentialDialogue<State>
       }
 
       return {
-        body: [`Nice to meet you ${context.input}.`, "Do you prefer blue or yellow?"],
+        messages: [`Nice to meet you ${context.input}.`, "Do you prefer blue or yellow?"],
         prompt: {
           type: "inlinePicker", choices: [
             { body: "Blue", value: Color.Blue },
@@ -39,11 +39,11 @@ export default class ExampleSequentialDialogue extends SequentialDialogue<State>
     async handleFavoriteColor(context: StepContext<State>): Promise<StepOutput<State>> {
       if(context.input === Color.Blue) {
         return {
-          body: "Great, blue is also my favorite color!"
+          messages: "Great, blue is also my favorite color!"
         }
       } else {
         return {
-          body: "Yellow can be very pretty indeed."
+          messages: "Yellow can be very pretty indeed."
         }
       }
     }

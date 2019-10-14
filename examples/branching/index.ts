@@ -11,7 +11,7 @@ class BranchingDialogue extends SequentialDialogue {
   script = {
     async start(): Promise<StepOutput> {
       return {
-        body: [`Which example dialogue would like to run?`],
+        messages: `Which example dialogue would like to run?`,
         prompt: {
           type: "picker",
           choices: [

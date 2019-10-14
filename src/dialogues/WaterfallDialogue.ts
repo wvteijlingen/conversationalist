@@ -1,6 +1,6 @@
 import Dialogue, { DialogueEvents, DialogueInput, DialogueOutput, DialogueSnapshot } from "../Dialogue"
 
-type Step<State> = (state: State) => Pick<DialogueOutput, "body"> & { buttons: string | string[] }
+type Step<State> = (state: State) => Pick<DialogueOutput, "messages"> & { buttons: string | string[] }
 
 export interface Snapshot<State> extends DialogueSnapshot<State> {
   nextStepIndex?: number
@@ -68,7 +68,7 @@ export default abstract class WaterfallDialogue<State = {}> implements Dialogue<
 
       const choices = Array.isArray(stepResult.buttons) ? stepResult.buttons : [stepResult.buttons]
       const step: DialogueOutput = {
-        body: stepResult.body,
+        messages: stepResult.messages,
         prompt: {
           type: "inlinePicker",
           choices: choices.map(e => ({ body: e, value: e })),

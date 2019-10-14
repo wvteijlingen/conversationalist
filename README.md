@@ -6,7 +6,7 @@ Conversationalist is a TypeScript framework that allows you to easily create sim
 
 - Interface based approach allows great flexibility.
 - Built in dialogue classes to cover most common conversation patterns.
-- Fully UI and environment agnostic. You can run this locally on a device, your own server, or in "the cloud".
+- Fully UI and platform agnostic. You can run this locally on a device, your own server, or in "the cloud".
 - No dependencies!
 
 ## Table of contents
@@ -30,15 +30,17 @@ Conversationalist is a TypeScript framework that allows you to easily create sim
 - **Dialogue**: A structure that contains the conversational logic (i.e. which messages to send, how to respond to them etc.).
 - **Middleware**: Custom logic that sits between the bot and the dialogues.
 
-## A conversation is made up of dialogues
+## Building blocks of a conversation
 
-A converstation ("What the user sees in the chat window"), is modeled using separate `Dialogues`. Dialogues are structures in your bot that contain the conversational logic. They can act like functions in your bot's program. A dialogue can receive input from the user and act on it by emitting output back to the user.
+Each instance of a `Bot` handles a single conversation with a single end user. A conversation is "What the user sees in the chat window".
 
-At any time there is only 1 active dialogue. This does not mean your chat bot is limited to one dialogue, a dialogue can initiate a transition to another dialogue which allows you to string together reusable blocks that make up a conversation.
+A conversation itself is made up of separate `Dialogues`. Dialogues are structures in your bot that contain the conversational logic. They can act like functions in your bot's program. A dialogue can receive input from the user and act on it by emitting output back to the user.
 
-## Receiving input from the user
+At any time there is only 1 active dialogue. This does not mean your chat bot is limited to one dialogue, a dialogue can initiate a transition to another dialogue which allows you to string them together as reusable blocks to make up a conversation.
 
-When the user sends input to the chat bot, it is handled in the following way:
+## Message flow
+
+When the user sends input to a chat bot, it is handled in the following way:
 
 1. The user sends input to the bot.
 2. The bot invokes each `before` middleware with the input, giving the middleware a change to inspect it and perform any desired side effect.
@@ -58,10 +60,6 @@ Output can contain data such as:
 - The input UI that is available for the user to respond.
 - Whether the dialogue is finished.
 - A next dialogue to transition to.
-
-### Handling longer processing by simulating typing
-
-Sometimes creating `DialogueOutput` takes some time, for example when the dialogue needs to call a third party API or query a database. In this case you can optionally call the `outputStart` callback which will indicate to the bot that dialogue is currently in the process of creating some output. This allows the UI to react accordingly, by showing a typing indicator for example.
 
 ## Dialogue state
 
@@ -230,7 +228,17 @@ const bot = new Bot(dialogue)
 bot.start()
 ```
 
-## Simulating human typing behaviour
+## Showing processing state
+
+Sometimes creating `DialogueOutput` takes some time, for example when the dialogue needs to call a third party API or query a database. In this case you can call the `outputStart` callback which will indicate to the bot that the dialogue is currently in the process of creating some output. This allows the UI to react accordingly, by showing a typing indicator for example.
+
+## Simulating human behaviour
+
+No human can instantaneously respond to incoming messages. They require some time to read the message, think of a response, and type the response. Conversationalist comes with the tools to easily simulate this behaviour, ultimately making your bot feel much more human.
+
+### Adding a reading and typing delay
+
+You can funnel messages through a `DelayedTypingEmitter` instance to simulate reading and typing delay. A `DelayedTypingEmitter` coalesces all bot events into a single callback, allowing you to update your UI in one place:
 
 ```typescript
 import { DelayedTypingEmitter } from "conversationalist"
@@ -244,10 +252,10 @@ const emitter = new DelayedTypingEmitter(bot, {
   typingDelay: 1500 // Simulate the bot taking 1.5 seconds to "type" a message.
 })
 
-emitter.events.update.on(({ isTyping, messages, prompt } => {
+emitter.events.update.on(({ isTyping, allMessages, addedMessages, prompt } => {
   // Update your UI here
   ui.showTypingIndicator = isTyping
-  ui.chatMessages = messages
+  ui.chatMessages = allMessages
   ui.userInputPrompt = prompt
 })
 ```

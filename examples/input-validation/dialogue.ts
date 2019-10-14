@@ -15,7 +15,7 @@ export default class ExampleSequentialDialogue extends SequentialDialogue {
   script = {
     async start(): Promise<StepOutput> {
       return {
-        body: `Please enter a number`,
+        messages: `Please enter a number`,
         prompt: { type: "text" },
         nextStep: this.handleInput
       }
@@ -25,7 +25,7 @@ export default class ExampleSequentialDialogue extends SequentialDialogue {
       const validNumber = validatedInput(isNumber, context.input, "That is not a valid number.")
 
       return {
-        body: `Indeed, ${validNumber} is a number`,
+        messages: `Indeed, ${validNumber} is a number`,
         nextStep: this.start
       }
     }

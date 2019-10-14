@@ -1,4 +1,4 @@
-import Dialogue, { DialogueEvents, DialogueInput, DialogueOutput, DialogueSnapshot } from "../Dialogue"
+import Dialogue, { DialogueEvents, DialogueInput, DialogueOutput, DialogueSnapshot, RewindToken } from "../Dialogue"
 import Prompt from "../Prompts"
 
 /**
@@ -26,15 +26,19 @@ export type StepOutput<State = {}> = {
    * If this step output does not contain a prompt, the next step will be called immediately.
    */
   nextStep?: Step<State>
-} & Omit<DialogueOutput, "rewindData">
+} & Omit<DialogueOutput, "rewindToken">
 
 interface Snapshot<State> extends DialogueSnapshot<State> {
   nextStepName?: string
+  activePrompt?: Prompt
 }
 
 /**
  * A dialogue that runs by executing steps in sequence.
  * Each step outputs a prompt to the user, and then passes the response input to the next step.
+ *
+ * Each step indicates the next step that follows it. You can use this functionality to implement
+ * simple branching, by specifying different followup-steps.
  */
 export default abstract class SequentialDialogue<State = {}> implements Dialogue<State> {
   abstract readonly identifier: string
@@ -47,6 +51,8 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
 
   protected state: State
   protected nextStep?: Step<State>
+  protected activePrompt?: Prompt
+
   events: DialogueEvents = {}
 
   constructor(params: { state: State, snapshot?: never } | { state?: never, snapshot: Snapshot<State> }) {
@@ -54,6 +60,7 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
       this.state = params.state
     } else if(params.snapshot) {
       this.state = params.snapshot.state
+      this.activePrompt = params.snapshot.activePrompt
       if(params.snapshot.nextStepName) {
         this.nextStep = this.getStepByNameOrThrow(params.snapshot.nextStepName)
       }
@@ -70,7 +77,8 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
     return {
       identifier: this.identifier,
       state: this.state,
-      nextStepName: this.nextStep?.name
+      nextStepName: this.nextStep?.name,
+      activePrompt: this.activePrompt
     }
   }
 
@@ -78,12 +86,8 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
     this.runStep(this.steps.start)
   }
 
-  rewind(rewindData: any) {
-    if(typeof rewindData.nextStepName !== "string") {
-      throw new Error("The provided rewindData is invalid.")
-    }
-
-    this.nextStep = this.getStepByNameOrThrow(rewindData.nextStepName)
+  rewind(rewindToken: RewindToken) {
+    this.nextStep = this.getStepByNameOrThrow(rewindToken)
   }
 
   onReceiveInput(input: DialogueInput) {
@@ -118,12 +122,16 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
   }
 
   private buildStepContext(input: DialogueInput): StepContext<State> {
-    return { input, state: this.state }
+    return {
+      input,
+      state: this.state,
+      prompt: this.activePrompt
+    }
   }
 
   private handleInvalidInputError(error: InvalidInputError, step: Step<State>, context: StepContext<State>) {
     this.handleStepOutput({
-      body: error.message,
+      messages: error.message,
       prompt: context.prompt,
       nextStep: step
     })
@@ -134,11 +142,8 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
       this.state = stepOutput.state
     }
 
-    if(stepOutput.nextStep) {
-      this.nextStep = stepOutput.nextStep
-    } else {
-      this.nextStep = undefined
-    }
+    this.nextStep = stepOutput.nextStep
+    this.activePrompt = stepOutput.prompt
 
     const dialogueOutput = this.buildDialogueOutput(stepOutput)
     this.events.output?.(dialogueOutput, this.nextStep === undefined)
@@ -157,7 +162,7 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
     const dialogueOutput: DialogueOutput = { ...stepOutput }
 
     if(stepOutput.prompt && stepOutput.prompt.isUndoAble !== false && stepOutput.nextStep) {
-      dialogueOutput.rewindData = { nextStepName: stepOutput.nextStep.name }
+      dialogueOutput.rewindToken = stepOutput.nextStep.name
     }
 
     return dialogueOutput

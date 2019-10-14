@@ -20,16 +20,16 @@ interface TextPrompt extends PromptBase {
 }
 
 /**
- * A prompt that displays a slider so the user can select a numerical value.
+ * A prompt that shows UI for the user to select a numerical value.
  */
-interface SliderPrompt extends PromptBase {
+interface NumericPrompt extends PromptBase {
   type: "slider"
   min: number
   max: number
 }
 
 /**
- * A prompt that displays one or multiple prefab responses in a picker.
+ * A prompt that displays one or multiple choices in a picker.
  * Use this type over `InlinePickerPrompt` if the amount of responses is too great
  * to be displayed inline.
  */
@@ -39,7 +39,7 @@ interface PickerPrompt extends PromptBase {
 }
 
 /**
- * A prompt that displays one or multiple prefab responses inline.
+ * A prompt that displays one or multiple choices inline.
  * Use this type over `PickerPrompt` if there is a small number of responses
  * that can be displayed inline.
  */
@@ -53,6 +53,6 @@ interface CustomPrompt extends PromptBase {
   customType: string
 }
 
-type Prompt = TextPrompt | SliderPrompt | PickerPrompt | InlinePickerPrompt | CustomPrompt
+type Prompt = TextPrompt | NumericPrompt | PickerPrompt | InlinePickerPrompt | CustomPrompt
 
 export default Prompt

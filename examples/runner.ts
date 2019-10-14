@@ -38,7 +38,11 @@ async function printPrompt(prompt: Prompt, bot: Bot) {
     })
 
     clearPrompt()
-    bot.respond((response as { input: string }).input)
+    bot.sendUserMessage({
+      body: (response as {
+        input: string
+      }).input
+      })
 
   } else if(prompt.type === "inlinePicker" || prompt.type === "picker") {
     const response = await enquirerPrompt({
@@ -50,7 +54,7 @@ async function printPrompt(prompt: Prompt, bot: Bot) {
 
     clearPrompt()
     const selectedChoice = prompt.choices.find(e => e.body === (response as any).input) as any
-    bot.respond(selectedChoice.body, selectedChoice.value)
+    bot.sendUserMessage({ body: selectedChoice.body, value: selectedChoice.value })
 
   } else if(prompt.type === "slider") {
     const response = await enquirerPrompt({
@@ -60,7 +64,11 @@ async function printPrompt(prompt: Prompt, bot: Bot) {
     })
 
     clearPrompt()
-    bot.respond((response as { input: string }).input)
+    bot.sendUserMessage({
+      body: (response as {
+        input: string
+      }).input
+      })
   }
 }
 
