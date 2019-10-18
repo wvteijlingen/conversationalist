@@ -52,22 +52,31 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
   protected state: State
   protected nextStep?: Step<State>
   protected activePrompt?: Prompt
+  protected isProcessing = false
 
   events: DialogueEvents = {}
 
-  constructor(params: { state: State, snapshot?: never } | { state?: never, snapshot: Snapshot<State> }) {
-    if(params.state) {
-      this.state = params.state
-    } else if(params.snapshot) {
-      this.state = params.snapshot.state
-      this.activePrompt = params.snapshot.activePrompt
-      if(params.snapshot.nextStepName) {
-        this.nextStep = this.getStepByNameOrThrow(params.snapshot.nextStepName)
+  constructor(params?: { state: State , snapshot?: never } | { state?: never, snapshot: Snapshot<State> }) {
+    if(params) {
+      if(params.state) {
+        this.state = { ...this.initialState?.(), ...params.state }
+      } else if(params.snapshot) {
+        this.state = params.snapshot.state
+        this.activePrompt = params.snapshot.activePrompt
+        if(params.snapshot.nextStepName) {
+          this.nextStep = this.getStepByNameOrThrow(params.snapshot.nextStepName)
+        }
+      } else {
+        throw new Error("Params must either include an initial state or a snapshot.")
       }
+    } else if(this.initialState) {
+      this.state = this.initialState()
     } else {
-      throw new Error("Params must either include an initial state or a snapshot.")
+      throw new Error("Params must either include an initial state or you must implement the intitialState method.")
     }
   }
+
+  initialState?(): State
 
   get snapshot(): Snapshot<State> | undefined {
     if(this.enableSnapshots) {
@@ -91,7 +100,7 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
   }
 
   onReceiveInput(input: DialogueInput) {
-    if(this.nextStep) {
+    if(this.nextStep && !this.isProcessing) {
       this.runStep(this.nextStep, input)
     }
   }
@@ -102,6 +111,8 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
    * @param input The user input that triggered the step.
    */
   protected async runStep(step: Step<State>, input?: DialogueInput) {
+    this.isProcessing = true
+
     this.events.outputStart?.()
 
     const stepContext = this.buildStepContext(input)
@@ -116,9 +127,12 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
         this.handleStepError(error)
       }
       return
+    } finally {
+      this.isProcessing = false
     }
 
     this.handleStepOutput(stepOutput)
+    this.isProcessing = false
   }
 
   private buildStepContext(input: DialogueInput): StepContext<State> {

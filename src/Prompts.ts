@@ -1,10 +1,5 @@
-export interface Choice {
-  body: string
-  value: unknown
-}
-
 interface PromptBase {
-  /** Whether the user can undo the answer given to the prompt. Defaults to true. */
+  /** Whether the user can undo the answer given to the prompt. Defaults to false. */
   isUndoAble?: boolean
 }
 
@@ -30,29 +25,23 @@ interface NumericPrompt extends PromptBase {
 
 /**
  * A prompt that displays one or multiple choices in a picker.
- * Use this type over `InlinePickerPrompt` if the amount of responses is too great
- * to be displayed inline.
  */
 interface PickerPrompt extends PromptBase {
   type: "picker",
-  choices: Choice[]
+  choices: Array<{
+    body: string
+    value: unknown
+  }>
 }
 
 /**
- * A prompt that displays one or multiple choices inline.
- * Use this type over `PickerPrompt` if there is a small number of responses
- * that can be displayed inline.
+ * A custom prompt.
  */
-interface InlinePickerPrompt extends PromptBase {
-  type: "inlinePicker"
-  choices: Choice[]
-}
-
 interface CustomPrompt extends PromptBase {
   type: "custom"
   customType: string
 }
 
-type Prompt = TextPrompt | NumericPrompt | PickerPrompt | InlinePickerPrompt | CustomPrompt
+type Prompt = TextPrompt | NumericPrompt | PickerPrompt | CustomPrompt
 
 export default Prompt

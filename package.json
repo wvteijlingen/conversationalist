@@ -6,7 +6,6 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "start": "build && node build/examples/branching/index.js",
     "lint": "tslint --project .",
     "test": "jest"
   },

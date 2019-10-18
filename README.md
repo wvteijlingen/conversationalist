@@ -11,8 +11,6 @@ Conversationalist is a TypeScript framework that allows you to easily create sim
 
 ## Table of contents
 
-* [Notable features](#notable-features)
-* [Table of contents](#table-of-contents)
 * [Terminology](#terminology)
 * [Building blocks of a conversation](#building-blocks-of-a-conversation)
 * [Example: Pasta-bot](#example-pasta-bot)
@@ -225,7 +223,7 @@ The state is also used when persisting a snapshot of the dialogue. See advanced 
 
 ## Advanced
 
-### Simulating human behaviour
+### Simulating human typing behaviour
 
 No human can instantaneously respond to incoming messages. They require some time to read the message, think of a response, and type the response. Conversationalist comes with the tools to easily simulate this behaviour and make your bot feel much more human.
 
@@ -253,7 +251,7 @@ emitter.events.update.on(({ isTyping, allMessages, addedMessages, prompt } => {
 
 ### Attachments
 
-TBD: Explain attachments.
+A sent or received message is not restricted to text only. Both a BotMessage and a UserMessage can contain an attachment. The structure of an attachment is generic, it is up to you to define the types of attachments that make sense for your use case.
 
 ### Persistence
 
@@ -289,7 +287,9 @@ Creating a custom dialogue is as "simple" as creating a class that implements th
 
 #### Sending output to the user
 
-When a dialogue wants to interact with the user, it must emit `DialogueOut` by calling its `output` callback. Usually a dialogue will emit output in response to receiving input. However, it also perfectly valid to emit output without receiving input from the user.
+To output one or more messages to the user, a dialogue must emit a `DialogueOutput` object by calling its `events.output` callback. Usually a dialogue will emit output in response to receiving input, but it also perfectly valid to emit output without receiving input from the user. See Dialogue.ts
+
+[API documentation for DialogueOutput](docs/interfaces/_dialogue_.dialogueoutput.html)
 
 Output can contain data such as:
 
@@ -298,7 +298,13 @@ Output can contain data such as:
 - Whether the dialogue is finished.
 - A next dialogue to transition to.
 
-#### Example: Translator-bot
+#### Showing a typing state
+
+When your custom dialogue receives input that you plan on handling, you can call the `events.outputStart` callback which will indicate to the bot that the dialogue has received the input and is working on a response. Firing this callback will cause the bot to update its `isActive` flag and fire an `activeChanged` event, allowing you to show a typing indicator in your UI.
+
+**Note: The built in SequentialDialogue automatically calls `outputStart` when it receives a response.**
+
+#### Example: Translate-o-bot
 
 The following example is a never-ending dialogue that translates user input using an async call to a third party:
 
@@ -337,7 +343,3 @@ const dialogue = new TranslatorDialogue()
 const bot = new Bot(dialogue)
 bot.start()
 ```
-
-#### Showing processing state
-
-Sometimes creating `DialogueOutput` takes some time, for example when the dialogue needs to call a third party API or query a database. In this case you can call the `outputStart` callback which will indicate to the bot that the dialogue is currently in the process of creating some output. This allows the UI to react accordingly, by showing a typing indicator for example.

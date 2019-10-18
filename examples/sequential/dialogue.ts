@@ -9,7 +9,7 @@ enum Color { Blue, Yellow }
 export default class ExampleSequentialDialogue extends SequentialDialogue<State> {
   identifier = "exampleDialogue"
 
-  script = {
+  steps = {
     async start(): Promise<StepOutput<State>> {
       return {
         messages: [`Hi there!`, "Welcome to this simple scripted dialogue.", "What is your name?"],
@@ -26,7 +26,7 @@ export default class ExampleSequentialDialogue extends SequentialDialogue<State>
       return {
         messages: [`Nice to meet you ${context.input}.`, "Do you prefer blue or yellow?"],
         prompt: {
-          type: "inlinePicker", choices: [
+          type: "picker", choices: [
             { body: "Blue", value: Color.Blue },
             { body: "Yellow", value: Color.Yellow }
           ]

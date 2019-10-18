@@ -1,4 +1,4 @@
-import { WaterfallDialogue } from "../../src"
+import WaterfallDialogue from "../../src/dialogues/WaterfallDialogue"
 
 interface State {
   username: string

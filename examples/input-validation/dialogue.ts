@@ -12,7 +12,7 @@ export function validatedInput<T>(validator: (input: DialogueInput) => input is 
 export default class ExampleSequentialDialogue extends SequentialDialogue {
   identifier = "exampleDialogue"
 
-  script = {
+  steps = {
     async start(): Promise<StepOutput> {
       return {
         messages: `Please enter a number`,

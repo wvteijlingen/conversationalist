@@ -145,6 +145,8 @@ export default class Bot {
       return
     }
 
+    this.log("Starting bot")
+
     if(this.activeDialogue) {
       this.activeDialogue.onStart()
       this.didStart = true
@@ -349,7 +351,7 @@ export default class Bot {
 
     if(isFinished) {
       try {
-         dialogue.onFinish?.()
+        dialogue.onFinish?.()
       } catch(error) {
         this.events.dialogueError.emit(error)
       }
@@ -386,32 +388,20 @@ export default class Bot {
     dialogue.events = {}
     this.dialogues = this.dialogues.filter(e => e !== dialogue)
 
-    // Find the last prompts of the dialogue and set `isUndoAble` to false
-    for(let i = this.messageLog.length; i >= 0; i--) {
+    // Find the last prompts of the dialogue and set `isUndoAble` to false.
+    for(let i = this.messageLog.length - 1; i >= 0; i--) {
       const message = this.messageLog[i]
-      if(message && message.author === "bot" && message._meta.dialogueIdentifier === dialogue.identifier && message.prompt) {
+      if(message.author === "bot" && message._meta.dialogueIdentifier === dialogue.identifier && message.prompt) {
         message.prompt.isUndoAble = false
         this.events.messagesChanged.emit({ added: [], removed: [], updated: [message] })
         break
       }
     }
 
-    if(this.activeDialogue) {
-      let lastMessage: BotMessage | undefined
-
-      for(let i = this.messageLog.length - 1; i >= 0; i--) {
-        const message = this.messageLog[i]
-        if(message.author === "bot" && message._meta.dialogueIdentifier === this.activeDialogue.identifier) {
-          lastMessage = message
-          break
-        }
-      }
-
-      try {
-        this.activeDialogue?.onResume?.()
-      } catch(error) {
-        this.events.dialogueError.emit(error)
-      }
+    try {
+      this.activeDialogue?.onResume?.()
+    } catch(error) {
+      this.events.dialogueError.emit(error)
     }
 
     this.events.dialogueRemoved.emit(dialogue)

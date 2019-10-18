@@ -13,6 +13,13 @@ interface State {
 export default class PastaOrderDialogue extends SequentialDialogue<State> {
   identifier = "pastaOrder"
 
+  initialState() {
+    return {
+      orders: [],
+      currentOrder: {}
+    }
+  }
+
   steps = {
     // The start method gets called automatically once the dialogue becomes active.
     // This is the entry point of your dialogue.
@@ -52,10 +59,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
       }
 
       return {
-        messages: [
-          "Great!",
-          "What sauce would you like with that?"
-        ],
+        messages: "What sauce would you like with that?",
         prompt: {
           type: "picker", choices: [
             { body: "Bolognaise", value: "bolognaise" },
@@ -93,11 +97,19 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
     },
 
     async handleAnotherOrder(context: StepContext<State>): Promise<StepOutput<State>> {
-      // If the user wants to add another pasta, we add the current order to
-      // the array of completed orders and go back to the start step.
+      // Add the current order to the state.
+      const newState = {
+        ...context.state,
+        orders: [
+          ...context.state.orders,
+          context.state.currentOrder
+        ]
+      }
+
+      // If the user wants to add another pasta, we go back to the start step.
       if(context.input === true) {
         return {
-          state: { ...context.state, orders: [...context.state.orders, context.state.currentOrder] },
+          state: newState,
           nextStep: this.start
         }
       }
@@ -107,6 +119,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
           "Great, I just need your address so I know where to send your delicious pasta.",
         ],
         prompt: { type: "text" },
+        state: newState,
         nextStep: this.finishOrder
       }
     },
@@ -119,13 +132,26 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
       }
 
       // Initiate the pasta delivery in the back-end.
-      await DeliveryService.deliver({
-        orders: context.state.orders
-        address,
-      })
+      // await DeliveryService.deliver({
+      //   orders: context.state.orders
+      //   address,
+      // })
+
+      let receipt = "Here is your receipt:\n"
+      for(const order of context.state.orders) {
+        receipt += `1x ${order.pastaType} ${order.sauce}\n`
+      }
+
+      receipt += "----------------------\n"
+      receipt += "Total price: free 🎉"
+      receipt += "\n"
+      receipt += `Delivery to: ${address}`
 
       return {
-        messages: "Your pasta is on its way! Thank you for ordering with pasta-bot."
+        messages: [
+          "Your pasta is on its way! Thank you for ordering with pasta-bot.",
+          receipt
+        ]
       }
     }
   }

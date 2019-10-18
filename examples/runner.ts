@@ -44,7 +44,7 @@ async function printPrompt(prompt: Prompt, bot: Bot) {
       }).input
       })
 
-  } else if(prompt.type === "inlinePicker" || prompt.type === "picker") {
+  } else if(prompt.type === "picker") {
     const response = await enquirerPrompt({
       type: "select",
       name: "input",

@@ -14,6 +14,8 @@ export interface BotMessage {
   body?: string
   prompt?: Prompt
   attachment?: Attachment
+
+  /** Framework internal data */
   _meta: {
     dialogueIdentifier: string | typeof SYSTEM_DIALOGUE_IDENTIFIER
     rewindToken?: RewindToken

@@ -70,7 +70,7 @@ export default abstract class WaterfallDialogue<State = {}> implements Dialogue<
       const step: DialogueOutput = {
         messages: stepResult.messages,
         prompt: {
-          type: "inlinePicker",
+          type: "picker",
           choices: choices.map(e => ({ body: e, value: e })),
           isUndoAble: false
         },
