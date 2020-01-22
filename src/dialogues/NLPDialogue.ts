@@ -18,7 +18,7 @@ interface Intent {
 }
 
 export default abstract class NLPDialogue<State = {}> implements Dialogue<State> {
-  abstract readonly identifier: string
+  abstract readonly name: string
   protected state: State
   events: DialogueEvents = {}
 

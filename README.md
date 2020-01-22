@@ -43,10 +43,17 @@ A conversation itself is made up of separate `Dialogues`. Dialogues are structur
 
 At any time there is only 1 active dialogue. This does not mean your chat bot is limited to one dialogue, a dialogue can initiate a transition to another dialogue which allows you to string them together as reusable blocks to make up a conversation.
 
+## Sequential dialogues
+
+The easiest way to create a dialogue is to subclass `SequentialDialogue`.
+
+A `SequentialDialogue` is a dialogue that goes through prewritten "steps". After each step, the dialogue waits for input from the user. When it receives user input, it calls the next step with that input. You can think of this as a bit of a call-response structure. A sequential dialogue supports multiple branches of dialogue.
+
+*Note: Instead of using a `SequentialDialogue`, you can  create your own dialogue classes if you want full control over your dialogue logic. See [Creating custom dialogue subclasses](#creating-custom-dialogue-subclasses)*
+
 ## Example: Pasta-bot
 
-The following example dialogue is a bot that takes orders for pasta. It shows most of the basic
-functionality that is provided by the framework.
+The following example dialogue is a bot that takes orders for pasta. It shows most of the basic functionality that is provided by the framework and the `SequentialDialogue`.
 
 ```typescript
 import { Bot } from "conversationalist"
@@ -56,11 +63,10 @@ import SequentialDialogue, {
   StepOutput
 } from "conversationalist/dialogues/SequentialDialogue"
 
-interface Order {
-  pastaType?: string
-  sauce?: string
-}
+interface Order { pastaType?: string, sauce?: string }
 
+// The internal state of the dialogue. The PastaOrderDialogue uses this
+// to keep track of the orders that are placed.
 interface State {
   orders: Order[]
   currentOrder: Order
@@ -70,7 +76,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
   identifier = "pastaOrder"
 
   steps = {
-    // The start method gets called automatically once the dialogue becomes active.
+    // The `start` method gets called automatically once the dialogue becomes active.
     // This is the entry point of your dialogue.
     async start(context: StepContext<State>): Promise<StepOutput<State>> {
       return {
@@ -78,8 +84,8 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
         messages: "What kind of pasta would you like?",
 
         // Include a prompt that allows the user to pick from a predefined set of pastas.
-        // The result of this prompt will be passed into the `handlePastaType` method, as indicated by
-        // the `nextStep` field.
+        // Whatever the user answers to this prompt will be passed into the `handlePastaType` method,
+        // as indicated by the `nextStep` field.
         prompt: {
           type: "picker",
           choices: [
@@ -99,6 +105,8 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
       }
     },
 
+    // Because the `start` method specified `handlePastaType` as the nextStep, this method will be
+    // called after the next user response.
     async handlePastaType(context: StepContext<State>): Promise<StepOutput<State>> {
       const pastaType = context.input
 
@@ -211,10 +219,6 @@ const bot = new Bot(dialogue)
 bot.start()
 ```
 
-## Sequential dialogues
-
-TBD: Explain how the `SequentialDialogue` works.
-
 ## Dialogue state
 
 Each dialogue contains internal state. This state can contain things such as saved user responses (e.g. the user's name), external dependencies, and more. What you put into the state is up to you. In it's most basic form, it is an empty object.
@@ -265,15 +269,19 @@ TDB: Explain the difference between a message body and value.
 
 TBD: Explain undoing of user responses and rewinding.
 
+### The dialogue stack
+
+Internally a bot uses a stack of dialogues. The dialogue on top of the stack is called the "active dialogue". If a user response is received by the bot, it is redirected to the active dialogue for handling. If a dialogue segues to another dialogue, that new dialogue is pushed to the top of the stack and will handle subsequent user input. Once a dialogue indicates that it has finished, it is popped from the stack and the dialogue below it will become the active dialogue again.
+
 ### Message flow
 
-When the user sends input to a chat bot, it is handled in the following way:
+When the user sends input to a chat bot, it is handled as follows:
 
 1. The user sends input to the bot.
 2. The bot invokes each `before` middleware with the input, giving the middleware a change to inspect it and perform any desired side effect.
-3. The bot sends the user input to the currently active dialogue.
-4. The dialogue receives input as `DialogueInput`, acts on it, and emits `DialogueOutput` as as reponse.
-5. The output is passed back to the bot.
+3. The bot sends the user input to the active dialogue.
+4. The dialogue receives input as `DialogueInput` and emits `DialogueOutput` as as reponse.
+5. The output is received to the bot.
 6. The bot invokes each `after` middleware with the output, giving the middleware a change to inspect it and perform any desired side effect.
 7. The bot transforms the output to a series of chat messages and adds those to the message log. It also emits certain events to let the developer know that the message log has changed.
 
@@ -285,7 +293,7 @@ If you need more control over the dialogue logic, you can also create your own d
 
 Creating a custom dialogue is as "simple" as creating a class that implements the `Dialogue` protocol. You can handle user input via the `onReceiveInput` method, and emit outpout calling the `output` event. The way you structure the internal dialogue logic is completely up to you.
 
-#### Sending output to the user
+#### Emitting dialogue output
 
 To output one or more messages to the user, a dialogue must emit a `DialogueOutput` object by calling its `events.output` callback. Usually a dialogue will emit output in response to receiving input, but it also perfectly valid to emit output without receiving input from the user. See Dialogue.ts
 
@@ -302,7 +310,7 @@ Output can contain data such as:
 
 When your custom dialogue receives input that you plan on handling, you can call the `events.outputStart` callback which will indicate to the bot that the dialogue has received the input and is working on a response. Firing this callback will cause the bot to update its `isActive` flag and fire an `activeChanged` event, allowing you to show a typing indicator in your UI.
 
-**Note: The built in SequentialDialogue automatically calls `outputStart` when it receives a response.**
+*Note: The built in SequentialDialogue automatically calls `outputStart` when it receives a response.*
 
 #### Example: Translate-o-bot
 

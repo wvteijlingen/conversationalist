@@ -1,4 +1,4 @@
-import { Bot, Prompt } from "../src"
+import { Bot, InputMode } from "../src"
 import { TestingDialogue } from "./helpers"
 
 describe("Sending a user message to a bot", () => {
@@ -42,9 +42,9 @@ describe("Sending a user message to a bot", () => {
 
 describe("A bot that sends a message", () => {
   const dialogue = new TestingDialogue()
-  dialogue.nextOutput = {
+  dialogue.nextOutput = [{
     messages: "Body"
-  }
+  }]
 
   it("emits a messagesChanged event containing an added message", done => {
     const chatBot = new Bot(dialogue)
@@ -104,19 +104,38 @@ describe("A bot that interjects a message", () => {
 })
 
 describe("A bot that sends a prompt", () => {
-  const prompt: Prompt = { type: "text" }
+  const prompt: InputMode = { type: "text" }
   const dialogue = new TestingDialogue()
-  dialogue.nextOutput = {
+  dialogue.nextOutput = [{
     messages: "Body",
     prompt
-  }
+  }]
 
   it("updates the activePrompt property", done => {
     const chatBot = new Bot(dialogue)
     chatBot.events.messagesChanged.once(changeSet => {
-      expect(chatBot.activePrompt).toMatchObject(prompt)
+      expect(chatBot.inputMode).toMatchObject(prompt)
       done()
     })
+    chatBot.start()
+  })
+})
+
+describe("Receiving a finishValue", () => {
+  const subDialogue = new TestingDialogue()
+  subDialogue.nextOutput = [{}, "Finish value"]
+
+  const rootDialogue = new TestingDialogue()
+  rootDialogue.nextOutput = [{
+    nextDialogue: subDialogue
+  }, undefined]
+  it("works", done => {
+    rootDialogue.onReceiveInput = (input, attachment) => {
+      expect(input).toBe("Finish value")
+      done()
+    }
+
+    const chatBot = new Bot(rootDialogue)
     chatBot.start()
   })
 })

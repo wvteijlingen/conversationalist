@@ -1,4 +1,4 @@
-import SequentialDialogue, { InvalidInputError, StepContext, StepOutput } from "../../src/dialogues/SequentialDialogue"
+import SequentialDialogue, { InvalidInputError, StepContext, StepOutput, Action } from "../../src/dialogues/sequential"
 
 interface Order {
   pastaType?: string
@@ -11,7 +11,7 @@ interface State {
 }
 
 export default class PastaOrderDialogue extends SequentialDialogue<State> {
-  identifier = "pastaOrder"
+  name = "pastaOrder"
 
   initialState() {
     return {
@@ -24,7 +24,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
     // The start method gets called automatically once the dialogue becomes active.
     // This is the entry point of your dialogue.
     async start(context: StepContext<State>): Promise<StepOutput<State>> {
-      return {
+      return Action.prompt({
         // The messages to send to the user.
         messages: "What kind of pasta would you like?",
 
@@ -46,7 +46,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
 
         // Specify that `handlePastaType` is the next step that should be called with the result of the prompt.
         nextStep: this.handlePastaType
-      }
+      })
     },
 
     async handlePastaType(context: StepContext<State>): Promise<StepOutput<State>> {
@@ -58,7 +58,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
         throw new InvalidInputError("🤔 It doesn't seem we have that kind of pasta. Please select a pasta from our menu.")
       }
 
-      return {
+      return Action.prompt({
         messages: "What sauce would you like with that?",
         prompt: {
           type: "picker", choices: [
@@ -69,7 +69,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
         },
         state: { ...context.state, currentOrder: { ...context.state.currentOrder, pastaType } },
         nextStep: this.handleSauce
-      }
+      })
     },
 
     async handleSauce(context: StepContext<State>): Promise<StepOutput<State>> {
@@ -79,7 +79,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
         throw new InvalidInputError("Sorry, we don't have that sauce. Please select a sauce from our menu.")
       }
 
-      return {
+      return Action.prompt({
         messages: [
           `Got it! One ${context.state.currentOrder?.pastaType} ${sauce}.`,
           "Would you like to add another pasta to your order?"
@@ -93,7 +93,7 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
         },
         state: { ...context.state, currentOrder: { ...context.state.currentOrder, sauce } },
         nextStep: this.handleAnotherOrder
-      }
+      })
     },
 
     async handleAnotherOrder(context: StepContext<State>): Promise<StepOutput<State>> {
@@ -109,26 +109,27 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
       // If the user wants to add another pasta, we go back to the start step.
       if(context.input === true) {
         return {
+          action: "goto",
           state: newState,
           nextStep: this.start
         }
       }
 
-      return {
+      return Action.prompt({
         messages: [
           "Great, I just need your address so I know where to send your delicious pasta.",
         ],
         prompt: { type: "text" },
         state: newState,
         nextStep: this.finishOrder
-      }
+      })
     },
 
     async finishOrder(context: StepContext<State>): Promise<StepOutput<State>> {
       const address = context.input
 
       if(typeof address !== "string" || address.trim().length === 0) {
-        throw new InvalidInputError("Hmm, I cannot find that address. Please enter a valid address.")
+        return Action.reprompt("Hmm, I cannot find that address.Please enter a valid address.")
       }
 
       // Initiate the pasta delivery in the back-end.
@@ -147,12 +148,12 @@ export default class PastaOrderDialogue extends SequentialDialogue<State> {
       receipt += "\n"
       receipt += `Delivery to: ${address}`
 
-      return {
+      return Action.finish({
         messages: [
           "Your pasta is on its way! Thank you for ordering with pasta-bot.",
           receipt
         ]
-      }
+      })
     }
   }
 }

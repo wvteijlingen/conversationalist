@@ -7,7 +7,7 @@ interface State {
 enum Color { Blue, Yellow }
 
 export default class ExampleSequentialDialogue extends SequentialDialogue<State> {
-  identifier = "exampleDialogue"
+  name = "exampleDialogue"
 
   steps = {
     async start(): Promise<StepOutput<State>> {

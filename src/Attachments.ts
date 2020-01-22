@@ -3,17 +3,25 @@
  */
 export interface ImageAttachment {
   type: "image"
-
-  /** The url of the image. */
-  href: string
+  payload: {
+    /** The url of the image. */
+    href: string
+  }
 }
 
-/** A custom attachment. */
+/**
+ * A custom attachment with a user defined payload.
+ */
 export interface CustomAttachment {
   type: "custom"
 
   /** The custom type of the attachment. */
   customType: string
+
+  /** Custom payload data. */
+  payload: {
+    [key: string]: any
+  }
 }
 
 type Attachment = ImageAttachment | CustomAttachment

@@ -1,7 +1,7 @@
 import { Dialogue, DialogueEvents, DialogueInput } from "../../src"
 
 export default class ReverseDialogue implements Dialogue {
-  readonly identifier = "reverse"
+  readonly name = "reverse"
   events: DialogueEvents = {}
 
   get snapshot() {

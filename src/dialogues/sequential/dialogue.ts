@@ -1,37 +1,6 @@
-import Dialogue, { DialogueEvents, DialogueInput, DialogueOutput, DialogueSnapshot, RewindToken } from "../Dialogue"
-import Prompt from "../Prompts"
-
-/**
- * A step in a sequential dialogue. This will usually be called in response to receiving user input.
- */
-export type Step<State> = (context: StepContext<State>) => Promise<StepOutput<State>>
-
-export interface StepContext<State = {}> {
-  /** The user input that triggered this step. */
-  input: DialogueInput
-
-  /** The prompt that was returned from the previous step. */
-  prompt?: Prompt
-
-  /** The current dialogue state. */
-  state: State
-}
-
-export type StepOutput<State = {}> = {
-  /** The new desired dialogue state. This can be omitted if you want to leave the state as is. */
-  state?: State,
-
-  /**
-   * The step to be called when receiving the next user input.
-   * If this step output does not contain a prompt, the next step will be called immediately.
-   */
-  nextStep?: Step<State>
-} & Omit<DialogueOutput, "rewindToken">
-
-interface Snapshot<State> extends DialogueSnapshot<State> {
-  nextStepName?: string
-  activePrompt?: Prompt
-}
+import Dialogue, { DialogueEvents, DialogueInput, DialogueSnapshot } from "../../Dialogue"
+import InputMode from "../../input-mode"
+import { StepOutput } from "./output"
 
 /**
  * A dialogue that runs by executing steps in sequence.
@@ -41,7 +10,7 @@ interface Snapshot<State> extends DialogueSnapshot<State> {
  * simple branching, by specifying different followup-steps.
  */
 export default abstract class SequentialDialogue<State = {}> implements Dialogue<State> {
-  abstract readonly identifier: string
+  abstract readonly name: string
   protected enableSnapshots = true
   protected steps: Record<"start" | string, Step<State>> = {
     async start() {
@@ -51,12 +20,12 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
 
   protected state: State
   protected nextStep?: Step<State>
-  protected activePrompt?: Prompt
+  protected activePrompt?: InputMode
   protected isProcessing = false
 
   events: DialogueEvents = {}
 
-  constructor(params?: { state: State , snapshot?: never } | { state?: never, snapshot: Snapshot<State> }) {
+  constructor(params?: { state: State, snapshot?: never } | { state?: never, snapshot: Snapshot<State> }) {
     if(params) {
       if(params.state) {
         this.state = { ...this.initialState?.(), ...params.state }
@@ -84,7 +53,7 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
     }
 
     return {
-      identifier: this.identifier,
+      name: this.name,
       state: this.state,
       nextStepName: this.nextStep?.name,
       activePrompt: this.activePrompt
@@ -95,7 +64,7 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
     this.runStep(this.steps.start)
   }
 
-  rewind(rewindToken: RewindToken) {
+  rewind(rewindToken: string) {
     this.nextStep = this.getStepByNameOrThrow(rewindToken)
   }
 
@@ -121,11 +90,11 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
     try {
       stepOutput = await step.call(this.steps, stepContext)
     } catch(error) {
-      if(error instanceof InvalidInputError) {
-        this.handleInvalidInputError(error, step, stepContext)
-      } else {
-        this.handleStepError(error)
-      }
+      // if(error instanceof InvalidInputError) {
+        // this.handleInvalidInputError(error, step, stepContext)
+      // } else {
+      this.handleStepError(error)
+      // }
       return
     } finally {
       this.isProcessing = false
@@ -144,11 +113,14 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
   }
 
   private handleInvalidInputError(error: InvalidInputError, step: Step<State>, context: StepContext<State>) {
-    this.handleStepOutput({
-      messages: error.message,
-      prompt: context.prompt,
-      nextStep: step
-    })
+    if(context.prompt) {
+      this.handleStepOutput({
+        action: "prompt",
+        messages: error.message,
+        prompt: context.prompt,
+        nextStep: step
+      })
+    }
   }
 
   private handleStepOutput(stepOutput: StepOutput<State>) {
@@ -156,15 +128,29 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
       this.state = stepOutput.state
     }
 
-    this.nextStep = stepOutput.nextStep
-    this.activePrompt = stepOutput.prompt
+    if(stepOutput.action === "reprompt") {
 
-    const dialogueOutput = this.buildDialogueOutput(stepOutput)
-    this.events.output?.(dialogueOutput, this.nextStep === undefined)
-
-    // Go to the next step immediately if there is no prompt.
-    if(this.nextStep && !stepOutput.prompt) {
+    } else if(stepOutput.action === "goto") {
+      this.nextStep = stepOutput.nextStep
       this.runStep(this.nextStep)
+
+    } else if(stepOutput.action === "message") {
+      this.nextStep = stepOutput.nextStep
+      this.events.output?.({ action: "message", messages: stepOutput.messages })
+
+    } else if(stepOutput.action === "prompt") {
+      this.nextStep = stepOutput.nextStep
+      this.activePrompt = stepOutput.prompt
+      this.events.output?.({ action: "prompt", messages: stepOutput.messages, prompt: stepOutput.prompt })
+
+    } else if(stepOutput.action === "transition") {
+      this.events.output?.({ action: "transition", to: stepOutput.to })
+
+    } else if(stepOutput.action === "wait") {
+      this.events.output?.({ action: "wait", for: stepOutput.for })
+
+    } else if(stepOutput.action === "finish") {
+      this.events.output?.({ action: "finish", value: stepOutput.value })
     }
   }
 
@@ -172,30 +158,41 @@ export default abstract class SequentialDialogue<State = {}> implements Dialogue
     this.events.error?.(error)
   }
 
-  private buildDialogueOutput(stepOutput: StepOutput<State>): DialogueOutput  {
-    const dialogueOutput: DialogueOutput = { ...stepOutput }
-
-    if(stepOutput.prompt && stepOutput.prompt.isUndoAble !== false && stepOutput.nextStep) {
-      dialogueOutput.rewindToken = stepOutput.nextStep.name
-    }
-
-    return dialogueOutput
-  }
-
   private getStepByNameOrThrow(name: string): Step<State> {
     const entry = Object.entries(this.steps).find(e => e[0] === name)
 
     if(!entry) {
-      throw new Error(`The step "${name}" does not exist in dialogue "${this.identifier}.`)
+      throw new Error(`The step "${name}" does not exist in dialogue "${this.name}.`)
     }
 
     return entry[1]
   }
 }
 
-export class InvalidInputError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = "InvalidInputError"
-  }
+// export class InvalidInputError extends Error {
+//   constructor(message: string) {
+//     super(message)
+//     this.name = "InvalidInputError"
+//   }
+// }
+
+/**
+ * A step in a sequential dialogue. This will usually be called in response to receiving user input.
+ */
+export type Step<State> = (context: StepContext<State>) => Promise<StepOutput<State>>
+
+export interface StepContext<State = {}> {
+  /** The user input that triggered this step. */
+  input: DialogueInput
+
+  /** The prompt that was returned from the previous step. */
+  prompt?: InputMode
+
+  /** The current dialogue state. */
+  state: State
+}
+
+interface Snapshot<State> extends DialogueSnapshot<State> {
+  nextStepName?: string
+  activePrompt?: InputMode
 }

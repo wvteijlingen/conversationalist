@@ -1,4 +1,4 @@
-interface PromptBase {
+interface InputBase {
   /** Whether the user can undo the answer given to the prompt. Defaults to false. */
   isUndoAble?: boolean
 }
@@ -6,7 +6,7 @@ interface PromptBase {
 /**
  * A prompt that shows a textfield for the user to type a response.
  */
-interface TextPrompt extends PromptBase {
+interface Text extends InputBase {
   type: "text"
   keyboard?: {
     autoCorrect?: boolean
@@ -17,7 +17,7 @@ interface TextPrompt extends PromptBase {
 /**
  * A prompt that shows UI for the user to select a numerical value.
  */
-interface NumericPrompt extends PromptBase {
+interface Numeric extends InputBase {
   type: "slider"
   min: number
   max: number
@@ -26,7 +26,7 @@ interface NumericPrompt extends PromptBase {
 /**
  * A prompt that displays one or multiple choices in a picker.
  */
-interface PickerPrompt extends PromptBase {
+interface Picker extends InputBase {
   type: "picker",
   choices: Array<{
     body: string
@@ -37,11 +37,11 @@ interface PickerPrompt extends PromptBase {
 /**
  * A custom prompt.
  */
-interface CustomPrompt extends PromptBase {
+interface Custom extends InputBase {
   type: "custom"
   customType: string
 }
 
-type Prompt = TextPrompt | NumericPrompt | PickerPrompt | CustomPrompt
+type InputMode = Text | Numeric | Picker | Custom
 
-export default Prompt
+export default InputMode

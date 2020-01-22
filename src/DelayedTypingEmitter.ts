@@ -1,6 +1,6 @@
 import Bot from "./Bot"
 import { Message } from "./Message"
-import Prompt from "./Prompts"
+import InputMode from "./input-mode"
 import { Disposable as DisposableEventListener, TypedEvent } from "./TypedEvent"
 
 const pause = (milliseconds: number) => new Promise(res => setTimeout(res, milliseconds))
@@ -9,7 +9,7 @@ export default class DelayedTypingEmitter {
   private isTyping: boolean = false
   private isActive: boolean
   private messages: Message[]
-  private prompt?: Prompt
+  private prompt?: InputMode
 
   private botListeners: DisposableEventListener[] = []
   private pendingMessages: Message[] = []
@@ -20,7 +20,7 @@ export default class DelayedTypingEmitter {
   readonly typingDelay: number
 
   readonly events = {
-    update: new TypedEvent<{ isTyping: boolean, allMessages: Message[], addedMessage?: Message, prompt?: Prompt }>()
+    update: new TypedEvent<{ isTyping: boolean, allMessages: Message[], addedMessage?: Message, prompt?: InputMode }>()
   }
 
   /**
@@ -35,7 +35,7 @@ export default class DelayedTypingEmitter {
 
     this.isActive = bot.isActive
     this.messages = bot.messageLog
-    this.prompt = bot.activePrompt
+    this.prompt = bot.inputMode
 
     this.botListeners.push(bot.events.activeChanged.on(async active => {
       this.isActive = active

@@ -1,0 +1,19 @@
+{
+  "name": "conversationalist-example-fb-messenger",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "localtunnel": "^2.0.0",
+    "request": "^2.88.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.1",
+    "@types/node": "^12.6.2",
+    "@types/request": "^2.48.3",
+    "enquirer": "^2.3.0",
+    "tslint": "^5.18.0",
+    "typescript": "3.7.0-beta"
+  }
+}

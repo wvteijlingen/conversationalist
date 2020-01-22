@@ -1,6 +1,5 @@
-import { BotMessage } from "./Message"
-import Prompt from "./Prompts"
 import Attachment from "./Attachments"
+import { DialogueOutput } from "./DialogueOutput"
 
 export interface DialogueEvents {
   /**
@@ -11,9 +10,9 @@ export interface DialogueEvents {
   /**
    * Callback that must be called after each dialogue step.
    * @param result The result of the dialogue step.
-   * @param isFinished Whether the dialogue is finished and should be popped of the dialogue stack.
+   * @param finishValue
    */
-  output?: (result: DialogueOutput, isFinished: boolean) => void
+  output?: (output: DialogueOutput) => void
 
   /**
    * Callback that can be called when an error occurs in a dialogue step.
@@ -27,8 +26,11 @@ export interface DialogueEvents {
  * Each implementation of this interface can be added to a Bot.
  */
 export default interface Dialogue<State = {}> {
-  /** Unique identifier of the dialogue. This must be unique within all dialogues of a Bot. */
-  readonly identifier: string
+  /** Do not set this yourself. This will automatically be populated when added to a bot. */
+  id?: string
+
+  /** Unique name of the dialogue. This must be unique within all dialogues of a Bot. */
+  readonly name: string
 
   /**
    * A snapshot that reflects the current state of the dialogue.
@@ -58,48 +60,22 @@ export default interface Dialogue<State = {}> {
   /**
    * Called when the dialogue is resumed after an interruption.
    */
-  onResume?(): void
-
-  /**
-   * Called when the dialogue is finished.
-   */
-  onFinish?(): void
+  onResume?(input?: unknown): void
 
   /**
    * Rewinds the dialogue using the given `rewindToken`.
    * Each dialogue can decide what this means.
    */
-  rewind?(rewindToken: RewindToken): void
-}
-
-export type RewindToken = string
-
-export interface DialogueSnapshot<State> {
-  /** The identifier of the dialogue. */
-  identifier: string
-
-  /** The state of the dialogue at the time the snapshot was created. */
-  state: State
-}
-
-type DialogueOutputMessage = Pick<BotMessage, "body" | "attachment"> | string
-
-/**
- * Output sent by a dialogue, received by a user.
- */
-export interface DialogueOutput {
-  /** One or multiple messages. */
-  messages?: DialogueOutputMessage | DialogueOutputMessage[]
-
-  /** An optional prompt to indicate the response method available to the user. */
-  prompt?: Prompt
-
-  /** Opaque rewind data that will be included when the dialogue is rewound to this step. */
-  rewindToken?: RewindToken
-
-  /** An optional dialogue to transition to. */
-  nextDialogue?: Dialogue<unknown>
+  rewind?(rewindToken: string): void
 }
 
 /** Input received by a dialogue, sent by a user. */
 export type DialogueInput = unknown | undefined
+
+export interface DialogueSnapshot<State> {
+  /** The name of the dialogue. */
+  name: string
+
+  /** The state of the dialogue at the time the snapshot was created. */
+  state: State
+}

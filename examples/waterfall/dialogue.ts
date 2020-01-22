@@ -5,7 +5,7 @@ interface State {
 }
 
 export default class ExampleWaterfallDialogue extends WaterfallDialogue<State> {
-  identifier = "exampleDialogue"
+  name = "exampleDialogue"
 
   steps = [
     (s: State) => ({

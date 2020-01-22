@@ -1,25 +1,21 @@
 import { Dialogue, DialogueEvents, DialogueOutput, Attachment } from "../src"
 
 export class TestingDialogue implements Dialogue {
-  identifier = "testing"
+  name = "testing"
   events: DialogueEvents = {}
   snapshot = undefined
 
-  nextOutput?: DialogueOutput
+  nextOutput?: [DialogueOutput, unknown?]
 
   onStart(): void {
     if(this.nextOutput) {
-      this.events.output?.(this.nextOutput, false)
+      this.events.output?.(this.nextOutput[0], this.nextOutput[1])
     }
   }
 
   onReceiveInput(input: unknown, attachment?: Attachment): void {
     if(this.nextOutput) {
-      this.events.output?.(this.nextOutput, false)
+      this.events.output?.(this.nextOutput[0], this.nextOutput[1])
     }
-  }
-
-  sendOuput(output: DialogueOutput) {
-    this.events.output?.(output, false)
   }
 }

@@ -1,7 +1,7 @@
 import { prompt as enquirerPrompt } from "enquirer"
 import ora from "ora"
 import * as readline from "readline"
-import { Bot, DelayedTypingEmitter, Dialogue, Message, Prompt } from "../src"
+import { Bot, DelayedTypingEmitter, Dialogue, Message, InputMode } from "../src"
 
 const loader = ora({
   text: "\x1b[33mTyping…\x1b[0m",
@@ -29,7 +29,7 @@ function printMessage(message: Message) {
   }
 }
 
-async function printPrompt(prompt: Prompt, bot: Bot) {
+async function printPrompt(prompt: InputMode, bot: Bot) {
   if(prompt.type === "text") {
     const response = await enquirerPrompt({
       type: "input",

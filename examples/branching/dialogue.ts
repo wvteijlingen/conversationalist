@@ -4,7 +4,7 @@ import ExampleSequentialDialogue from "../sequential/dialogue"
 import ExampleWaterfallDialogue from "../waterfall/dialogue"
 
 export default class BranchingDialogue extends SequentialDialogue {
-  identifier = "branchingDialogue"
+  name = "branchingDialogue"
 
   steps = {
     async start(): Promise<StepOutput> {

@@ -1,6 +1,5 @@
 import Attachment from "./Attachments"
-import Prompt from "./Prompts"
-import { RewindToken } from "./Dialogue"
+import InputMode from "./input-mode"
 
 export const SYSTEM_DIALOGUE_IDENTIFIER = "_system"
 
@@ -12,13 +11,13 @@ export interface BotMessage {
   author: "bot"
   creationDate: Date
   body?: string
-  prompt?: Prompt
+  inputMode?: InputMode
   attachment?: Attachment
 
   /** Framework internal data */
   _meta: {
     dialogueIdentifier: string | typeof SYSTEM_DIALOGUE_IDENTIFIER
-    rewindToken?: RewindToken
+    rewindToken?: string
   }
 }
 

@@ -11,7 +11,7 @@ export interface Snapshot<State> extends DialogueSnapshot<State> {
  * The dialogue has no internal state, no return value, and does not handle the user response except for advancing the dialogue.
  */
 export default abstract class WaterfallDialogue<State = {}> implements Dialogue<State> {
-  abstract readonly identifier: string
+  abstract readonly name: string
   readonly steps: Array<Step<State>> = []
 
   events: DialogueEvents = {}
@@ -37,7 +37,7 @@ export default abstract class WaterfallDialogue<State = {}> implements Dialogue<
 
   get snapshot(): Snapshot<State> | undefined {
     return {
-      identifier: this.identifier,
+      name: this.name,
       state: this.state,
       nextStepIndex: this.nextStepIndex
     }
